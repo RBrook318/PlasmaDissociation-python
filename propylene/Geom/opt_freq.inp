@@ -1,0 +1,38 @@
+$comment
+No symmetry
+$end
+
+$molecule
+0 1
+C                  0.00012073   -0.89181688    0.02663591
+H                  0.57370482   -1.70648600    0.93757727
+H                  0.69759798   -0.94421228   -1.12815611
+H                 -1.26970955   -1.29082115   -0.19939738
+C                 -0.00273719    0.55295479    0.55976496
+H                 -0.00823479    0.73198482    1.61466659
+C                  0.00168687    1.59838303   -0.30257303
+H                  0.00718954    1.42562383   -1.35851972
+H                 -0.00085738    2.86210452    0.17229690
+$end
+
+$rem
+Jobtype		OPT
+!EXCHANGE            HF
+!CORRELATION         CI
+EXCHANGE            BHHLYP !50% HF +  50% Becke88 exchange
+BASIS               6-31+G*
+UNRESTRICTED        True
+MAX_SCF_CYCLES      500
+SYM_IGNORE          True
+SCF_Algorithm       DIIS
+$end
+
+$molecule
+read
+$end
+
+$rem
+Jobtype	FREQ
+EXCHANGE            BHHLYP
+BASIS               6-31+G*
+$end
