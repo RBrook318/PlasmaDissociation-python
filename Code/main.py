@@ -71,12 +71,12 @@ for i in range(int(startstep), endstep+1):
 
     molecule2 = prop.prop_1(molecule1, molecule2, n, nstates, increment)
     
-    out.output_molecule(molecule2)
+    
     
     # qc.run_qchem(ncpu,'f.in', molecule2,n,nstates, Guess=Guess)
     qc.readqchem('f2.out',molecule2,9,2)
-    qc.create_qchem_input('f.in', molecule2, scf_algorithm="DIIS", Guess=True)
-    exit()
+    # qc.create_qchem_input('f.in', molecule2, scf_algorithm="DIIS", Guess=True)
+    
 
     molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
 
@@ -86,7 +86,7 @@ for i in range(int(startstep), endstep+1):
 
     out.output_molecule(molecule1)
 
-    
+    exit()    
     if dissociated == 0:
         Guess = True
     else:

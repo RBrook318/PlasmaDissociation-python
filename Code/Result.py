@@ -1,26 +1,36 @@
-import os
-import shutil
-import subprocess
-import sys 
+# Result file for the pure python plasma code. Should use a provided bondingarray file to know which bonds to investigate. Then it can look through xyz.all and 
+# then make a dissociation.out as well as the C-C.out order files both in the output folder and in the total folder of the a whole set of trajectories. 
+import os 
 
-reps = 100
+def process_results():
+    # 1.read in the bonding array
+    # bondarr = read_bondarr()
+    # # 2. detect dissociation
+    # detect_dissociation(bondarr)
+    # 3 add to compiled results.
+    compile_results()
 
-def detect_dissociation(input_file, output_file):
-    # Define the array denoting bonded molecules
-    bonded_array = [
-        [1, 2],
-        [1, 3],
-        [1, 4],
-        [1, 5],
-        [5, 6],
-        [5, 7],
-        [7, 8],
-        [7, 9]
 
-    ]
+def read_bondarr():
+    bondarr = {}
+    with open('../output/bondarr.txt', 'r') as file:
+        for line in file:
+            line = line.strip()
+            if line:  # Skip empty lines
+                atoms, bond_type = line.split(':')
+                atom1, atom2 = atoms.split('-')
+                atom1 = int(atom1)
+                atom2 = int(atom2)
+                bondarr[(atom1, atom2)] = bond_type
+    
+    return bondarr
+
+
+
+def detect_dissociation(bondarr):
 
     # Read the input data from a file
-    with open(input_file, 'r') as f:
+    with open('../output/xyz.all', 'r') as f:
         lines = f.readlines()
 
     # Initialize variables to store the current timestep, atom data, and dissociation flag
@@ -29,68 +39,57 @@ def detect_dissociation(input_file, output_file):
     dissociated_bonds = set()  # Keep track of dissociated bond pairs
 
     # Open the output file for writing
-    with open(output_file, 'w') as output:
+    with open('../output/dissociation.out', 'w') as output:
         # Iterate through the lines and process the data
         for line in lines:
             parts = line.split()
-            if len(parts) == 1 and parts[0].replace('.', '', 1).isdigit():
+            if len(parts) == 2 and parts[1].isdigit():
                 if atoms:
-                    broken_bonds = []
-                    for bonded_pair in bonded_array:
-                        i, j = bonded_pair
-                        atom1 = atoms[i]        
-                        atom2 = atoms[j]
-                        distance = ((atom1[1] - atom2[1])**2 + (atom1[2] - atom2[2])**2 + (atom1[3] - atom2[3])**2)**0.5
-                        if distance > 5.0:  # Adjust this threshold as needed
-                            broken_bond_str = f"{i}-{j}"
-                            if broken_bond_str not in dissociated_bonds:
-                                output.write(f"Dissociation detected at timestep {timestep}, Broken bonds: [{broken_bond_str}]\n")
-                                dissociated_bonds.add(broken_bond_str)
+                    for bonded_pair, bond_type in bondarr.items(): 
+                        if bonded_pair not in dissociated_bonds: 
+                            i, j = bonded_pair
+                            atom1 = atoms[i]        
+                            atom2 = atoms[j]
+                            distance = ((atom1[1] - atom2[1])**2 + (atom1[2] - atom2[2])**2 + (atom1[3] - atom2[3])**2)**0.5
+                            if distance > 5.0:  # Adjust this threshold as needed
+                                broken_bond_str = f"{i}-{j}:{bond_type}"  # Include bond type in the output
+                                if broken_bond_str not in dissociated_bonds:
+                                    output.write(f"Dissociation detected at timestep {timestep}, Broken bond: {broken_bond_str}\n")
+                                    dissociated_bonds.add(bonded_pair)
+                                    
                     atoms = {}
-                timestep = float(parts[0])
+                timestep = float(parts[1])
             elif len(parts) == 5 and parts[0].isdigit():
                 atom_num = int(parts[0])
                 atom_info = [parts[1]] + [float(x) for x in parts[2:]]
                 atoms[atom_num] = atom_info
 
-# Call the function with input and output file paths
+def compile_results():
+    with open('../output/dissociation.out', "r") as f:
+        lines = f.readlines()
+        print(lines)
 
-
-
-def process_molecular_coordinates(input_file_path, output_file_path):
-    current_atoms = []
-    atom_number = 1  # Initialize atom number
-
-    with open(input_file_path, 'r') as input_file:
-        lines = input_file.readlines()
-
-    with open(output_file_path, 'w') as output_file:
-        for line in lines:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue  # Skip empty lines and comments
-
-            if line.startswith('C') or line.startswith('F'):
-                parts = line.split()
-                if len(parts) == 4:  # Assuming "Symbol x y z" format
-                    symbol, x, y, z = parts
-                    current_atoms.append((atom_number, symbol, float(x), float(y), float(z)))
-                    atom_number += 1
+    for line in lines:
+        if line.startswith("Dissociation detected"):
+            parts = line.split(", ")
+            timestep = int(float(parts[0].split(" ")[-1]))
+            bond_info = parts[1].split(":")
+            bond_type = bond_info[2].strip() # Remove leading and trailing whitespace
+            bond_number = bond_info[1].strip()
             
-            elif line.replace('.', '', 1).isdigit():
-                # This line indicates a new time step, write time step to output file
-                if current_atoms:
-                    output_file.write("{}\n".format(time_step))
-                    for atom in current_atoms:
-                        atom_number, symbol, x, y, z = atom
-                        output_file.write("{} {} {} {} {}\n".format(atom_number, symbol, x, y, z))
-                    output_file.write("\n")  # Add a space between sets
+            # Write to bond-type-specific output file
+            bond_type_file = os.path.join("../results", f"{bond_type}.out")
+            with open(bond_type_file, "a") as f_out:
+                f_out.write(f"{timestep}\n")
+                
 
-                # Update time step and reset for a new set of atoms
-                time_step = line
-                current_atoms = []
-                atom_number = 1  # Reset atom number for the next set
+            
+            # Write to old output file format and order by timestep
+            bond_number_file = os.path.join("../results", f"{bond_number}.out")
+            with open(bond_number_file, "a") as f_out:
+                f_out.write(f"{timestep}\n")
 
+            
+        
 
-process_molecular_coordinates('t.xyz', 'output.xyz')
-detect_dissociation('output.xyz', 'dissociation.out')
+process_results()

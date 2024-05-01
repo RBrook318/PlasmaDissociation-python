@@ -24,13 +24,13 @@ import inputs
 #########################################################################################
 
 # Number of repeats 
-repeats=1
+repeats=3
 # #Number of parallel cores per folder/node (max 8)
 cores=8
 # Name of running folder 
 # Default : <method>-<system>-<random number> ie CCS-HP-31254
 # Otherwise:  <method>-<system>-<runfolder string>
-Runfolder='propylene-python'
+Runfolder='HFC-236fa-SCF-python'
 # Restart Flag 
 restart = 'NO'
 # Initial restarts 
@@ -90,11 +90,14 @@ if __name__=="__main__":
         
         EXDIR1=EXDIR+"/"+Runfolder  
         
+        os.mkdir(EXDIR1+"/"+"results")
 
             
         #Copies input files
         shutil.copy2("run.py",EXDIR1)
         shutil.copy2("inputs.py",EXDIR1)
+        shutil.copy2("../"+inputs.Molecule+"/bondarr.txt",EXDIR1+"/"+"results")
+
 
         for i in range(repeats):
             path=os.path.join(EXDIR1,"run-"+str(i+1))
@@ -109,33 +112,18 @@ if __name__=="__main__":
         EXDIR1=os.getcwd()
         if(HPCFLG==1):
             number=random.randint(99999,1000000)
-            file1="qchem"+str(number)+".sh"
+            file1="Plasma"+str(number)+".sh"
             f=open(file1,"w")
             f.write("#$ -cwd -V \n")
-            f.write("#$ -l h_vmem=1G,h_rt=00:30:00 \n")
-            f.write("#$ -N qchemlocal \n")
-            f.write("mkdir ./qchemlocal\n")
-            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz. -C ./qchemlocal\n')
-            f.write('qchemlocal="./qchemlocal"\n')
-            f.write('export QCHEM_HOME="$qchemlocal"\n')
-            f.write('export QC="$qchemlocal"\n')
-            f.write('export QCAUX="$QC/qcaux"\n')
-            f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
-            f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
-            f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.close()
-            subprocess.call(['qsub',file1])
-            number=random.randint(99999,1000000)
-            file2="Plasma"+str(number)+".sh"
-            f=open(file2,"w")
-            f.write("#$ -cwd -V \n")
-            f.write("#$ -l h_vmem=1G,h_rt=10:00:00 \n")
+            f.write("#$ -l h_vmem=1G,h_rt=18:00:00 \n")
             f.write("#$ -N file1 \n")
             f.write("#$ -pe smp "+str(cores)+" \n") #Use shared memory parallel environemnt 
             f.write("#$ -t 1-"+str(repeats)+" \n")
             f.write("module load mkl \n")
             f.write("module load test qchem \n")
-            f.write('qchemlocal="../../qchemlocal"\n')
+            f.write("mkdir $TMPDIR/qchemlocal\n")
+            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
+            f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
             f.write('export QCAUX="$QC/qcaux"\n')
@@ -145,11 +133,11 @@ if __name__=="__main__":
             f.write("module load anaconda \n")
             f.write("source activate base \n")
             f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-            f.write("python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start))
+            f.write("python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
             f.close()
             # if(cores!=1):
             #     os.environ["OMP_NUM_THREADS"]=str(cores)
-            command = ['qsub', '-hold_jid', 'qchemlocal', file2]
+            command = ['qsub', '-hold_jid', 'qchemlocal', file1]
             subprocess.call(command)
             # subprocess.call(['qsub', file2])
             for i in range(Initre):
@@ -164,7 +152,9 @@ if __name__=="__main__":
                 f.write("module load mkl \n")
                 f.write("module load test qchem \n")
                 f.write("module load qchem \n")
-                f.write('qchemlocal="../../qchemlocal"\n')
+                f.write("mkdir $TMPDIR/qchemlocal\n")
+                f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
+                f.write('qchemlocal=$TMPDIR/qchemlocal\n')
                 f.write('export QCHEM_HOME="$qchemlocal"\n')
                 f.write('export QC="$qchemlocal"\n')
                 f.write('export QCAUX="$QC/qcaux"\n')
@@ -174,7 +164,7 @@ if __name__=="__main__":
                 f.write("module load anaconda \n")
                 f.write("source activate base \n")
                 f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-                f.write("python Main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start))
+                f.write("python Main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+" "+str(inputs.Geom_start)+" "+str(inputs.Spin_flip))
                 f.close()
                 command = ['qsub', '-hold_jid', 'file'+str(i+1), file2]
                 subprocess.call(command)
@@ -201,7 +191,9 @@ if __name__=="__main__":
             f.write("module load mkl \n")
             f.write("module load test qchem \n")
             f.write("module load qchem \n")
-            f.write('qchemlocal="../../qchemlocal"\n')
+            f.write("mkdir $TMPDIR/qchemlocal\n")
+            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
+            f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
             f.write('export QCAUX="$QC/qcaux"\n')
@@ -211,7 +203,7 @@ if __name__=="__main__":
             f.write("module load anaconda \n")
             f.write("source activate base \n")
             f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-            f.write(" python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start))
+            f.write(" python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
             f.close()
             # if(cores!=1):
             #     os.environ["OMP_NUM_THREADS"]=str(cores)
