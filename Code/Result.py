@@ -13,7 +13,7 @@ def process_results():
 
 def read_bondarr():
     bondarr = {}
-    with open('../results/bondarr.txt', 'r') as file:
+    with open('../../results/bondarr.txt', 'r') as file:
         for line in file:
             line = line.strip()
             if line:  # Skip empty lines
