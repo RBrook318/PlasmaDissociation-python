@@ -1,5 +1,4 @@
-# init.py - Has the molcule class used as well as initialising empty molecule or reading molecule from file or Json
-
+# init.py
 import numpy as np
 from itertools import islice
 import json
@@ -132,17 +131,21 @@ class Molecule:
             return cls.from_dict(data)
 
 
-def create_empty_molecule(natoms,nst):
+def create_empty_molecule(natoms,nst,spin_flip):
     symbols = [''] * natoms
     coordinates = np.zeros((natoms, 3))
     scf_energy = np.zeros((nst))
     momenta = np.zeros((natoms, 3))
     forces = np.zeros((natoms, 3))
+    if spin_flip == 1:
+        multiplicity = 5
+    elif spin_flip == 0:
+        multiplicity = 3
     amplitudes = np.zeros((nst))
     amplitudes[0] = 1
-    return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes)
+    return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity)
 
-def initialize_structure(reps,natoms,nst):
+def initialize_structure(reps,natoms,nst,spin_flip):
     file_path = f"Geometry.{reps}"  # Updated file path with reps variable
 
     with open(file_path, 'r') as file:
@@ -166,17 +169,23 @@ def initialize_structure(reps,natoms,nst):
     else: 
         amplitudes = np.array([1.0, 0.0])
 
+    if spin_flip == 1:
+        multiplicity = 5
+    elif spin_flip == 0:
+        multiplicity = 3
+
+
     forces = np.zeros((natoms,3))
     scf_energy = np.zeros((nst))
     # Create Molecule object with default amplitudes
-    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces,amplitudes=amplitudes)
+    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity= multiplicity,amplitudes=amplitudes)
 
     return molecule
 
-def create_molecule(reps, natoms, nst):
+def create_molecule(reps, natoms, nst,spin_flip):
     if reps is None:
         # If reps is None, create an empty molecule
-        return create_empty_molecule(natoms, nst)
+        return create_empty_molecule(natoms, nst, spin_flip)
     else:
         # Otherwise, create an empty molecule
-        return initialize_structure(reps,natoms,nst)
+        return initialize_structure(reps,natoms,nst,spin_flip)

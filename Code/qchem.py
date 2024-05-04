@@ -14,7 +14,7 @@ def file_contains_string(file_path, search_string):
                 return True
     return False
 
-def create_qchem_input(output_file, molecule, scf_algorithm="DIIS", Guess=True):
+def create_qchem_input(output_file, molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
     # Extract molecule information
     symbols = molecule.symbols
     coordinates_bohr = molecule.coordinates  # Coordinates are in Bohr
@@ -47,54 +47,71 @@ def create_qchem_input(output_file, molecule, scf_algorithm="DIIS", Guess=True):
         "    MAX_CIS_CYCLES      500\n"
     )
 
+    if spin_flip==1:
+        qchem_input += (
+            "    SPIN_FLIP           True\n"    
+            "    SET_Iter            500\n"
+        "\n"
+        )
+    
     # Add SCF_GUESS line if Guess is True
     if Guess:
         qchem_input += "    SCF_GUESS           Read\n"
-
+    
+    if spin_flip==1:
+        qchem_input += (
+            "\n"
+            "CIS_N_ROOTS 1\n"
+            "CIS_STATE_DERIV 1\n"
+            "$end\n"
+        )
     qchem_input += (
-        "\n"
-        "CIS_N_ROOTS 1\n"
-        "CIS_STATE_DERIV 1\n"
         "$end\n"
     )
+
+
     # Write the Q-Chem input content to the output file
     with open(output_file, "w") as qchem_file:
         qchem_file.write(qchem_input)
 
-def run_qchem(ncpu,file, molecule, n, nstates, Guess=True): 
+def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True): 
 
     def submit_qchem_job(ncpu,file,output):
         subprocess.run(["qchem", "-save", "-nt", str(ncpu), file, output, "wf"])
 
     # Prepare f.inp file
-    create_qchem_input(file, molecule, scf_algorithm="DIIS", Guess=Guess)
+    create_qchem_input(file, molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
 
     # Submit the initial QChem job
     submit_qchem_job(ncpu,file,"f.out")
 
 
 
-    if file_contains_string("f.out", "Thank you very much for using Q-Chem"):
+    if file_contains_string("f.out", "Total job time"):
         # Job completed successfully
         readqchem('f.out', molecule, n, nstates)
+        # Append f.out content to f.all
+        with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
+            f_all.write(f_out.read())
         pass   
     else:
         # Retry with a different setup
-        create_qchem_input("f.inp", molecule, scf_algorithm="DIIS_GDM", Guess=False)
+        create_qchem_input("f.inp", molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False)
         submit_qchem_job(ncpu, "f.inp", "f2.out")
 
         # Check for the second failure
-        if file_contains_string("f2.out", "Thank you very much for using Q-chem"):
-            # Job failed both times, print error and exit
+        if file_contains_string("f2.out", "Total job time"):
+            print('The file has the right line here.')
             readqchem('f2.out', molecule, n, nstates)
+            print('Forces should have been read in')
+            with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
+                f_all.write(f_out.read())
         else:
             with open("ERROR", "w") as file:
-                file.write("Error occurred during QChem job.\n" + os.getcwd())
+                file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
            
 
-    # Append f.out content to f.all (is this super necessary??)
-    with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
-        f_all.write(f_out.read())
+    
 
 def readqchem(output_file, molecule, natoms, nst):
 
