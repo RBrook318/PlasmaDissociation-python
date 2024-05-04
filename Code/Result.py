@@ -4,16 +4,16 @@ import os
 
 def process_results():
     # 1.read in the bonding array
-    # bondarr = read_bondarr()
+    bondarr = read_bondarr()
     # # 2. detect dissociation
-    # detect_dissociation(bondarr)
+    detect_dissociation(bondarr)
     # 3 add to compiled results.
     compile_results()
 
 
 def read_bondarr():
     bondarr = {}
-    with open('../output/bondarr.txt', 'r') as file:
+    with open('../results/bondarr.txt', 'r') as file:
         for line in file:
             line = line.strip()
             if line:  # Skip empty lines
@@ -51,7 +51,7 @@ def detect_dissociation(bondarr):
                             atom1 = atoms[i]        
                             atom2 = atoms[j]
                             distance = ((atom1[1] - atom2[1])**2 + (atom1[2] - atom2[2])**2 + (atom1[3] - atom2[3])**2)**0.5
-                            if distance > 5.0:  # Adjust this threshold as needed
+                            if distance > 5.0:  # Adjust this threshold as needed (distance in bohr for the unit to break)
                                 broken_bond_str = f"{i}-{j}:{bond_type}"  # Include bond type in the output
                                 if broken_bond_str not in dissociated_bonds:
                                     output.write(f"Dissociation detected at timestep {timestep}, Broken bond: {broken_bond_str}\n")
@@ -74,7 +74,7 @@ def compile_results():
             parts = line.split(", ")
             timestep = int(float(parts[0].split(" ")[-1]))
             bond_info = parts[1].split(":")
-            bond_type = bond_info[2].strip() # Remove leading and trailing whitespace
+            bond_type = bond_info[2].strip() 
             bond_number = bond_info[1].strip()
             
             # Write to bond-type-specific output file
@@ -92,4 +92,4 @@ def compile_results():
             
         
 
-process_results()
+

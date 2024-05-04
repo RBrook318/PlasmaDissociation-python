@@ -1,3 +1,5 @@
+# Main file for calling other functions. Handles the inputs and then calls everything else from another file. 
+
 import sys
 import os
 import subprocess
@@ -7,9 +9,10 @@ import init
 import qchem as qc
 import prop
 import output as out
+import Result
 
 if __name__ == "__main__":
-    if len(sys.argv) != 10:
+    if len(sys.argv) != 11:
         print("Usage: python script_name.py <reps> <noofcpus> <natoms> <nstates>")
         sys.exit(1)
 
@@ -23,17 +26,18 @@ if __name__ == "__main__":
         endstep = int(sys.argv[7])
         restart = str(sys.argv[8])
         geom_start = int(sys.argv[9])
+        spin_flip = int(sys.argv[10])
     except ValueError:
         print("Invalid number of CPUs. Please provide a valid integer.")
         sys.exit(1)
 
 if(restart == 'NO'):    
-    molecule1 = init.create_molecule(reps+geom_start-1, n,nstates)
+    molecule1 = init.create_molecule(reps+geom_start-1, n,nstates,spin_flip)
 
-    molecule2 = init.create_molecule(None, n,nstates)
+    molecule2 = init.create_molecule(None, n,nstates,spin_flip)
 
-    # qc.run_qchem(ncpu,'f.in', molecule1,n, nstates,Guess=False)
-    qc.readqchem('f.out',molecule1,9,2)
+    qc.run_qchem(ncpu,'f.in', molecule1,n, nstates,spin_flip,Guess=False)
+  
 
     out.output_molecule(molecule1)
     startstep = 1
@@ -42,7 +46,7 @@ if(restart == 'NO'):
 
 elif(restart == 'YES'):
 
-    molecule2 = init.create_molecule(None,n,nstates)
+    molecule2 = init.create_molecule(None,n,nstates,spin_flip)
 
     filename = '../output/molecule.json'
     if os.path.exists(filename):
@@ -52,14 +56,14 @@ elif(restart == 'YES'):
         startstep = molecule1.timestep / increment
        
         Guess = False
-        qc.run_qchem(ncpu,'f.in', molecule1,n,nstates, Guess=Guess)
+        qc.run_qchem(ncpu,'f.in', molecule1,n,nstates,spin_flip, Guess=Guess)
         
     else:
-        molecule1 = init.create_molecule(reps, n,nstates)
+        molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
         
-        molecule2 = init.create_molecule(None, n,nstates)
+        molecule2 = init.create_molecule(None, n,nstates,spin_flip)
 
-        qc.run_qchem(ncpu,'f.in', molecule1,n,nstates, Guess=False)
+        qc.run_qchem(ncpu,'f.in', molecule1,n,nstates,spin_flip, Guess=False)
 
         out.output_molecule(molecule1)
 
@@ -70,14 +74,9 @@ elif(restart == 'YES'):
 for i in range(int(startstep), endstep+1):
 
     molecule2 = prop.prop_1(molecule1, molecule2, n, nstates, increment)
-    
-    
-    
-    # qc.run_qchem(ncpu,'f.in', molecule2,n,nstates, Guess=Guess)
-    qc.readqchem('f2.out',molecule2,9,2)
-    # qc.create_qchem_input('f.in', molecule2, scf_algorithm="DIIS", Guess=True)
-    
 
+    qc.run_qchem(ncpu,'f.in', molecule2,n,nstates,spin_flip, Guess=Guess)
+    
     molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
 
     molecule1, dissociated = prop.fragements(molecule1)
@@ -86,7 +85,7 @@ for i in range(int(startstep), endstep+1):
 
     out.output_molecule(molecule1)
 
-    exit()    
+
     if dissociated == 0:
         Guess = True
     else:
@@ -94,4 +93,4 @@ for i in range(int(startstep), endstep+1):
     
 
 
-out.detect_dissociation('../output/xyz.all', 'dissociation.out')
+Result.process_results()

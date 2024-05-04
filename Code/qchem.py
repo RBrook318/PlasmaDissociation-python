@@ -100,11 +100,12 @@ def readqchem(output_file, molecule, natoms, nst):
 
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     ndim = 3 * reduced_natoms
-    l1t = ' Excited state   1: excitation energy (eV) ='
-    l2t = ' Gradient of the state energy (including CIS Excitation Energy)'
+    l1t = ' SCF   energy in the final basis set ='
+    l2t = ' Gradient of SCF Energy'
     
     with open(output_file, 'r') as file:
         f = np.zeros(ndim,dtype = np.float64)
+
         molecule.update_forces(f)
         e = np.zeros(nst,dtype = np.float64)
         C = np.zeros(ndim)
@@ -120,7 +121,7 @@ def readqchem(output_file, molecule, natoms, nst):
                     e[0] = float(match.group())
                     # Update the SCF energy in the Molecule object
                     molecule.update_scf_energy(e)
-           
+                    print("energy = ", e)
                 else:
                     print("Number not found in the line.")
                 break
@@ -131,6 +132,7 @@ def readqchem(output_file, molecule, natoms, nst):
         lines_read = 0
         skip_counter = 0
         lines_to_read = 4 * (math.ceil(natoms / 6)) - 1
+        print("lines = ", lines_to_read)
         start_index = 0
         for line in file:
             if found_target and lines_read < lines_to_read:
@@ -139,16 +141,18 @@ def readqchem(output_file, molecule, natoms, nst):
                     lines_read += 1
                     start_index += 1
                     parts = data_line.split("  ")
+                    print(parts)
                     m = start_index
                     for j in range(1, len(parts)):
                         f[m - 1] = float(parts[j])
                         m = m + 3
                 if skip_counter == 3:
                     lines_read += 1
-                    start_index = 6 * start_index
+                    start_index = 15 + start_index
                 skip_counter = (skip_counter + 1) % 4
             if l2t in line:
                 found_target = True
+                print(line)
                 # Skip the header line
                 next(file)
 

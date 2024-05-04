@@ -1,4 +1,5 @@
-# init.py
+# init.py - Has the molcule class used as well as initialising empty molecule or reading molecule from file or Json
+
 import numpy as np
 from itertools import islice
 import json

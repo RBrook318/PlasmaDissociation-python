@@ -1,3 +1,9 @@
+# File that handles outputs for all the different parts of the molecule: 
+# 1. output xyz
+# 2. output momentum
+# 3. output forces and amplitudes
+# 4. output json file for restarting
+
 import init
 import json
 
@@ -13,10 +19,11 @@ def output_xyz(molecule):
         # Write the timestep
         xyz_file.write(f"Timestep: {molecule.timestep}\n")
 
+        # write xyz
         for atom_number, (symbol, (x, y, z)) in enumerate(zip(molecule.symbols, molecule.coordinates), start=1):
             xyz_file.write(f"{atom_number} {symbol}   {x:.15f}   {y:.15f}   {z:.15f}\n")
 
-        # Write a dashed line as a separator
+      
         xyz_file.write("-" * 40 + "\n")
 
 def output_momenta(molecule):
@@ -29,7 +36,7 @@ def output_momenta(molecule):
         for px, py, pz in molecule.momenta:
             momenta_file.write(f"{px:.15f}   {py:.15f}   {pz:.15f}\n")
 
-        # Write a dashed line as a separator
+      
         momenta_file.write("-" * 40 + "\n")
 
 def output_forces(molecule):
@@ -53,5 +60,5 @@ def output_forces(molecule):
         # Write dissociation information
         forces_file.write(f"Dissociation Flags: {molecule.dissociation_flags}\n")
 
-        # Write a dashed line as a separator
+       
         forces_file.write("-" * 40 + "\n")
