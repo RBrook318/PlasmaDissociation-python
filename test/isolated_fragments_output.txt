@@ -1,0 +1,64 @@
+Timestep: 0
+Isolated Fragments:
+[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]]
+Distances between atoms from different fragments:
+
+Timestep: 1632
+Isolated Fragments:
+[[0, 1, 2, 6, 7, 8, 9, 10, 11], [3, 4, 5]]
+Distances between atoms from different fragments:
+Distance from 1 inf1 and  4 inf 2: 48.8995800729957
+Distance from 1 inf1 and  5 inf 2: 51.00825098506525
+Distance from 1 inf1 and  6 inf 2: 48.835102622014766
+Distance from 2 inf1 and  4 inf 2: 47.7948758880204
+Distance from 2 inf1 and  5 inf 2: 49.82737396332897
+Distance from 2 inf1 and  6 inf 2: 47.66500958869738
+Distance from 3 inf1 and  4 inf 2: 30.059673987521062
+Distance from 3 inf1 and  5 inf 2: 31.079691874051232
+Distance from 3 inf1 and  6 inf 2: 30.612261746695314
+Distance from 7 inf1 and  4 inf 2: 31.175599064035673
+Distance from 7 inf1 and  5 inf 2: 32.03512215629471
+Distance from 7 inf1 and  6 inf 2: 31.85421737045061
+Distance from 8 inf1 and  4 inf 2: 30.002746518782146
+Distance from 8 inf1 and  5 inf 2: 31.20715676235631
+Distance from 8 inf1 and  6 inf 2: 30.58700419988118
+Distance from 9 inf1 and  4 inf 2: 45.61458896162371
+Distance from 9 inf1 and  5 inf 2: 47.69443103112665
+Distance from 9 inf1 and  6 inf 2: 45.43341506725459
+Distance from 10 inf1 and  4 inf 2: 47.69238629131818
+Distance from 10 inf1 and  5 inf 2: 49.59693962809074
+Distance from 10 inf1 and  6 inf 2: 47.599427451990316
+Distance from 11 inf1 and  4 inf 2: 47.06606065072619
+Distance from 11 inf1 and  5 inf 2: 49.24247702882558
+Distance from 11 inf1 and  6 inf 2: 47.014420960401914
+Distance from 12 inf1 and  4 inf 2: 49.34418385985227
+Distance from 12 inf1 and  5 inf 2: 51.37772936838902
+Distance from 12 inf1 and  6 inf 2: 49.389376961823494
+Distance from 4 inf2 and  1 inf 1: 48.8995800729957
+Distance from 4 inf2 and  2 inf 1: 47.7948758880204
+Distance from 4 inf2 and  3 inf 1: 30.059673987521062
+Distance from 4 inf2 and  7 inf 1: 31.175599064035673
+Distance from 4 inf2 and  8 inf 1: 30.002746518782146
+Distance from 4 inf2 and  9 inf 1: 45.61458896162371
+Distance from 4 inf2 and  10 inf 1: 47.69238629131818
+Distance from 4 inf2 and  11 inf 1: 47.06606065072619
+Distance from 4 inf2 and  12 inf 1: 49.34418385985227
+Distance from 5 inf2 and  1 inf 1: 51.00825098506525
+Distance from 5 inf2 and  2 inf 1: 49.82737396332897
+Distance from 5 inf2 and  3 inf 1: 31.079691874051232
+Distance from 5 inf2 and  7 inf 1: 32.03512215629471
+Distance from 5 inf2 and  8 inf 1: 31.20715676235631
+Distance from 5 inf2 and  9 inf 1: 47.69443103112665
+Distance from 5 inf2 and  10 inf 1: 49.59693962809074
+Distance from 5 inf2 and  11 inf 1: 49.24247702882558
+Distance from 5 inf2 and  12 inf 1: 51.37772936838902
+Distance from 6 inf2 and  1 inf 1: 48.835102622014766
+Distance from 6 inf2 and  2 inf 1: 47.66500958869738
+Distance from 6 inf2 and  3 inf 1: 30.612261746695314
+Distance from 6 inf2 and  7 inf 1: 31.85421737045061
+Distance from 6 inf2 and  8 inf 1: 30.58700419988118
+Distance from 6 inf2 and  9 inf 1: 45.43341506725459
+Distance from 6 inf2 and  10 inf 1: 47.599427451990316
+Distance from 6 inf2 and  11 inf 1: 47.014420960401914
+Distance from 6 inf2 and  12 inf 1: 49.389376961823494
+

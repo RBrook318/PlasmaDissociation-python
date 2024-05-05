@@ -288,8 +288,8 @@ def fragements(molecule):
         if val < 1.0e-5:
  
             molecule.multiplicity -= 1
-            if molecule.multiplicity == 2:
-                molecule.multiplicity = 4
+            if molecule.multiplicity == 1:
+                molecule.multiplicity = 1
             molecule.dissociation_flags[i - 1] = 'YES'
             dissociated = 1
             molecule.forces = np.delete(molecule.forces, 3 * (j-1))

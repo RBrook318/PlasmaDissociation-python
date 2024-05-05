@@ -12,6 +12,7 @@ class NumpyEncoder(json.JSONEncoder):
     
 class Molecule:
     def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None):
+        self.indexes = np.arange(1,len(symbols)+1)
         self.symbols = symbols
         self.coordinates = np.array(coordinates, dtype=np.float128)
         self.momenta = np.array(momenta, dtype=np.float128) if momenta is not None else None
@@ -50,6 +51,7 @@ class Molecule:
         self.dissociation_flags = new_flags
 
     def print_info(self):
+        print("Indexes:", self.indexes)
         print("Symbols:", self.symbols)
         print("Coordinates:")
         print(self.coordinates)
@@ -102,9 +104,7 @@ class Molecule:
     @classmethod
     def from_dict(cls, data):
         amplitudes = data['Amplitudes']
-        print(amplitudes)
         complex_amplitudes = np.array([complex(real, imag) for real, imag in amplitudes])
-        print(complex_amplitudes)
         if isinstance(amplitudes[0], (float, int)):
             # New format: a list of floats
             pass  # You can keep it as it is
@@ -179,4 +179,32 @@ def create_molecule(reps, natoms, nst):
         return create_empty_molecule(natoms, nst)
     else:
         # Otherwise, create an empty molecule
+<<<<<<< Updated upstream
         return initialize_structure(reps,natoms,nst)
+=======
+        return initialize_structure(reps,natoms,nst,spin_flip)
+    
+def sub_molecule(molecule, fragment):
+    print(fragment)
+    sub_molecule = create_empty_molecule(len(fragment),2,0)
+    parent_molecule = create_empty_molecule(len(molecule.symbols)-len(fragment),2,0)
+    for i in range(len(fragment)): 
+        real_index=np.where(molecule.indexes == fragment[i])[0][0]
+        print(real_index)
+        sub_molecule.symbols[i] = molecule.symbols[real_index]
+        sub_molecule.indexes[i] = molecule.indexes[real_index]
+        sub_molecule.momenta[i] = molecule.momenta[real_index]
+        sub_molecule.coordinates[i] = molecule.coordinates[real_index]
+    j = 0
+    for i in range(len(molecule.symbols)):
+        if i+1 not in fragment:
+            parent_molecule.symbols[j] = molecule.symbols[i]
+            parent_molecule.indexes[j] = molecule.indexes[i]
+            parent_molecule.momenta[j] = molecule.momenta[i]
+            parent_molecule.coordinates[j] = molecule.coordinates[i]
+            j +=1
+    sub_molecule.multiplicity = molecule.multiplicity-1
+    parent_molecule.multiplicity = molecule.multiplicity-1
+
+    return sub_molecule,parent_molecule
+>>>>>>> Stashed changes

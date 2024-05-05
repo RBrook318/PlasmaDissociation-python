@@ -10,6 +10,7 @@ import qchem as qc
 import prop
 import output as out
 import Result
+import isolates as iso
 
 if __name__ == "__main__":
     if len(sys.argv) != 11:
@@ -36,10 +37,10 @@ if(restart == 'NO'):
 
     molecule2 = init.create_molecule(None, n,nstates,spin_flip)
 
-    qc.run_qchem(ncpu,'f.in', molecule1,n, nstates,spin_flip,Guess=False)
+    # qc.run_qchem(ncpu,'f.in', molecule1,n, nstates,spin_flip,Guess=False)
   
 
-    out.output_molecule(molecule1)
+    # out.output_molecule(molecule1)
     startstep = 1
 
     Guess = True
@@ -70,27 +71,44 @@ elif(restart == 'YES'):
         startstep = 1
 
         Guess = True
+molecule_array = [molecule1]
 
+nisolates =1 
+iso.full_isolates(molecule_array,nisolates)
 for i in range(int(startstep), endstep+1):
+    if nisolates == 1:
+        molecule2 = prop.prop_1(molecule_array[0], molecule2, n, nstates, increment)
 
-    molecule2 = prop.prop_1(molecule1, molecule2, n, nstates, increment)
+        qc.run_qchem(ncpu,'f.in', molecule2,n,nstates,spin_flip, Guess=Guess)
+        
+        molecule1 = prop.prop_2(molecule_array[0], molecule2, n, nstates, increment)
 
-    qc.run_qchem(ncpu,'f.in', molecule2,n,nstates,spin_flip, Guess=Guess)
+        molecule1, dissociated = prop.fragements(molecule1)
     
-    molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
+        molecule1 = prop.prop_diss(molecule_array[0],increment)
 
-    molecule1, dissociated = prop.fragements(molecule1)
-   
-    molecule1 = prop.prop_diss(molecule1,increment)
-
-    out.output_molecule(molecule1)
+        out.output_molecule(molecule_array[0])
 
 
-    if dissociated == 0:
-        Guess = True
-    else:
-        Guess = False
+        if dissociated == 0:
+            Guess = True
+        else:
+            Guess = False
+    elif nisolates>1:
+        for i in range(1,nisolates):
+
+            molecule2 = init.create_molecule(None, len(molecule_array[i].symbols),nstates,spin_flip)
+
+            molecule2 = prop.prop_1(molecule_array[i], molecule2, n, nstates, increment)
+
+            qc.run_qchem(ncpu,'f.in', molecule2,n,nstates,spin_flip, Guess=Guess)
+        
+            molecule1 = prop.prop_2(molecule_array[i], molecule2, n, nstates, increment)
+
+            molecule1, dissociated = prop.fragements(molecule1)
     
+            molecule1 = prop.prop_diss(molecule1,increment)
 
+            out.output_molecule(molecule1)
 
 Result.process_results()
