@@ -20,10 +20,6 @@ def full_isolates(molecule_array, nisolates):
         if len(fully_separated_fragments)>1: 
             for i in range(1,len(fully_separated_fragments)):
                 sub_molecule,parent_molecule = init.sub_molecule(molecule_array[0], fully_separated_fragments[i])
-                print('parent molecule: ')
-                parent_molecule.print_info()
-                print('sub molecule: ')
-                sub_molecule.print_info()
                 molecule_array.append(parent_molecule)
                 molecule_array.append(sub_molecule)
     else: 
