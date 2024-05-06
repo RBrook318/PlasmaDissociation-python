@@ -1,0 +1,3 @@
+intel/18.0.2 conflicts with loaded module 'intel/17.0.1'
+OMP: Warning #181: GOMP_CPU_AFFINITY: ignored because KMP_AFFINITY has been defined
+OMP: Warning #181: GOMP_CPU_AFFINITY: ignored because KMP_AFFINITY has been defined

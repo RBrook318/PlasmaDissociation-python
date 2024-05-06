@@ -1,0 +1,54 @@
+## Hosts assigned to job 6080449.1:
+##
+## dc1s0b1a.arc3.leeds.ac.uk 8 slots
+##
+## Resources granted:
+##
+## h_vmem = 1G (per slot)
+## h_rt   = 1:00:00
+## disk   = 1G (per slot)
+
+You are running Q-Chem version: 6.0.1
+
+#
+# job setting
+#
+local host:  dc1s0b1a.arc3.leeds.ac.uk
+current dir: /nobackup/cm18rb/geom-C2H4
+input file:  opt_freq.inp
+output file: f.out
+nprocs     : 0
+nthreads   : 8
+#
+# qchem installation setting
+#
+QC:          /apps/applications/qchem/6.0.1/1/default
+QCAUX:       /apps/applications/qchem/6.0.1/1/default/qcaux
+QCPROG:      /apps/applications/qchem/6.0.1/1/default/exe/qcprog.exe_s
+QCPROG_S:    /apps/applications/qchem/6.0.1/1/default/exe/qcprog.exe_s
+PARALLEL:    -DSERIAL
+QCMPI:       seq
+#
+# qchem directory setting
+#
+qcrun:       wf
+QCSCRATCH:   /nobackup/cm18rb/geom-C2H4
+QCLOCALSCR:  
+QCTMPDIR:    /nobackup/cm18rb/geom-C2H4
+QCFILEPREF:  /nobackup/cm18rb/geom-C2H4/wf
+QCSAVEDIR:   /nobackup/cm18rb/geom-C2H4/wf
+workdirs:    /nobackup/cm18rb/geom-C2H4/wf
+workdir0:    /nobackup/cm18rb/geom-C2H4/wf
+partmpdirs =  
+#
+# parallel setting
+#
+QCRSH:           rsh
+QCMPI:           seq
+QCMPIRUN:        
+QCMACHINEFILE:   /nobackup/cm18rb/geom-C2H4/hostfile
+
+#
+# env setting
+#
+exported envs:   QC QCAUX QCSCRATCH QCRUNNAME QCFILEPREF QCPROG QCPROG_S GUIFILE
