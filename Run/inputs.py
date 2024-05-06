@@ -18,3 +18,5 @@ Timestep = 10
 Tot_timesteps = 2500
 # Starting geometry index
 Geom_start = 1
+# use spin flip tddft
+Spin_flip = 0
