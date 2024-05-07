@@ -1,5 +1,3 @@
-# Main file for calling other functions. Handles the inputs and then calls everything else from another file. 
-
 import sys
 import os
 import subprocess
@@ -79,7 +77,7 @@ for i in range(int(startstep), endstep+1):
     
     molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
 
-    molecule1, dissociated = prop.fragements(molecule1)
+    molecule1, dissociated = prop.fragements(molecule1,spin_flip)
    
     molecule1 = prop.prop_diss(molecule1,increment)
 

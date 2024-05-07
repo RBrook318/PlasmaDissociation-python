@@ -41,10 +41,6 @@ def create_qchem_input(output_file, molecule, spin_flip, scf_algorithm="DIIS", G
         "    SYM_IGNORE          True\n"
         f"    SCF_Algorithm       {scf_algorithm}\n"  # Use the specified SCF algorithm
         "\n"
-        "    SPIN_FLIP           True\n"
-        "    SET_Iter            500\n"
-        "\n"
-        "    MAX_CIS_CYCLES      500\n"
     )
 
     if spin_flip==1:
@@ -89,7 +85,7 @@ def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True):
 
     if file_contains_string("f.out", "Total job time"):
         # Job completed successfully
-        readqchem('f.out', molecule, n, nstates)
+        readqchem('f.out', molecule, n, nstates,spin_flip)
         # Append f.out content to f.all
         with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
             f_all.write(f_out.read())
@@ -101,9 +97,7 @@ def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True):
 
         # Check for the second failure
         if file_contains_string("f2.out", "Total job time"):
-            print('The file has the right line here.')
-            readqchem('f2.out', molecule, n, nstates)
-            print('Forces should have been read in')
+            readqchem('f2.out', molecule, n, nstates,spin_flip)
             with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
                 f_all.write(f_out.read())
         else:
@@ -113,12 +107,16 @@ def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True):
 
     
 
-def readqchem(output_file, molecule, natoms, nst):
+def readqchem(output_file, molecule, natoms, nst,spin_flip):
 
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     ndim = 3 * reduced_natoms
-    l1t = ' SCF   energy in the final basis set ='
-    l2t = ' Gradient of SCF Energy'
+    if spin_flip==1:
+        l1t = ' Excited state   1: excitation energy (eV) ='
+        l2t = ' Gradient of the state energy (including CIS Excitation Energy)'
+    else:
+        l1t = ' SCF   energy in the final basis set ='
+        l2t = ' Gradient of SCF Energy'
     
     with open(output_file, 'r') as file:
         f = np.zeros(ndim,dtype = np.float64)

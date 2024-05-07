@@ -24,13 +24,13 @@ import inputs
 #########################################################################################
 
 # Number of repeats 
-repeats=3
+repeats=5
 # #Number of parallel cores per folder/node (max 8)
 cores=8
 # Name of running folder 
 # Default : <method>-<system>-<random number> ie CCS-HP-31254
 # Otherwise:  <method>-<system>-<runfolder string>
-Runfolder='HFC-236fa-SCF-python'
+Runfolder='C2H4-SCF-python'
 # Restart Flag 
 restart = 'NO'
 # Initial restarts 
@@ -115,7 +115,7 @@ if __name__=="__main__":
             file1="Plasma"+str(number)+".sh"
             f=open(file1,"w")
             f.write("#$ -cwd -V \n")
-            f.write("#$ -l h_vmem=1G,h_rt=18:00:00 \n")
+            f.write("#$ -l h_vmem=1G,h_rt=30:00:00 \n")
             f.write("#$ -N file1 \n")
             f.write("#$ -pe smp "+str(cores)+" \n") #Use shared memory parallel environemnt 
             f.write("#$ -t 1-"+str(repeats)+" \n")

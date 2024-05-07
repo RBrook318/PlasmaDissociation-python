@@ -51,7 +51,7 @@ def detect_dissociation(bondarr):
                             atom1 = atoms[i]        
                             atom2 = atoms[j]
                             distance = ((atom1[1] - atom2[1])**2 + (atom1[2] - atom2[2])**2 + (atom1[3] - atom2[3])**2)**0.5
-                            if distance > 5.0:  # Adjust this threshold as needed (distance in bohr for the unit to break)
+                            if distance > 5.0:  # Adjust this threshold as needed
                                 broken_bond_str = f"{i}-{j}:{bond_type}"  # Include bond type in the output
                                 if broken_bond_str not in dissociated_bonds:
                                     output.write(f"Dissociation detected at timestep {timestep}, Broken bond: {broken_bond_str}\n")
@@ -74,18 +74,18 @@ def compile_results():
             parts = line.split(", ")
             timestep = int(float(parts[0].split(" ")[-1]))
             bond_info = parts[1].split(":")
-            bond_type = bond_info[2].strip() 
+            bond_type = bond_info[2].strip() # Remove leading and trailing whitespace
             bond_number = bond_info[1].strip()
             
             # Write to bond-type-specific output file
-            bond_type_file = os.path.join("../results", f"{bond_type}.out")
+            bond_type_file = os.path.join("../../results", f"{bond_type}.out")
             with open(bond_type_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
                 
 
             
             # Write to old output file format and order by timestep
-            bond_number_file = os.path.join("../results", f"{bond_number}.out")
+            bond_number_file = os.path.join("../../results", f"{bond_number}.out")
             with open(bond_number_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
 

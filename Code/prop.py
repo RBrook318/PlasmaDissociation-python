@@ -181,11 +181,11 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     # print("Force vector: ", Force_vector, "\n")
     for i in range(natoms):
         shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/mass[i]
-        print("force:", Force_vector[i,:])
-        print("Velocities: ", increment*velocities[i,:] )
-        print("mass: ", mass[i])
-        print("Force/mass: ", Force_vector[i,:]/mass[i])
-        print("Increment*Force/mass: ", ((increment**2)/2)*Force_vector[i,:]/mass[i])
+        # print("force:", Force_vector[i,:])
+        # print("Velocities: ", increment*velocities[i,:] )
+        # print("mass: ", mass[i])
+        # print("Force/mass: ", Force_vector[i,:]/mass[i])
+        # print("Increment*Force/mass: ", ((increment**2)/2)*Force_vector[i,:]/mass[i])
         shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + increment*Force_vector[i,:]
 
     restore_molecule(molecule2, shrunk_molecule, shrunk_index)
@@ -219,6 +219,8 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
             mass[i] = 2 * Mau
         elif shrunk_molecule1.symbols[i] == 'F':
             mass[i] = 19 * Mau
+        elif shrunk_molecule1.symbols[i] == 'O':
+            mass[i] = 16 * Mau
         else:
             print('Atom', shrunk_molecule1.symbols[i], 'is not supported')
             raise ValueError('Unsupported atom type')
@@ -250,7 +252,6 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     Coupling_temp = 0.05 * Coupling + 0.95 * Coupling
 
     Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp, nst)/10.
-
     for im in range(1, 10):
         Eham_temp = (im * Eham_2 + (10 - im) * Eham_1) * 0.1
         Energy_temp = (0.1 * im + 0.05) * shrunk_molecule2.scf_energy + (0.95 - im * 0.1) * shrunk_molecule1.scf_energy
@@ -260,6 +261,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
         Amplitudes_temp = A1
         Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, nst)
         Force_vector += Force_vector_temp / 10.
+
     A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), Amplitudes_temp)
     Force_vector = Force_vector.reshape(-1, 3)
     
@@ -275,7 +277,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
 
     return molecule1
 
-def fragements(molecule):
+def fragements(molecule,spin_flip):
     natom = len(molecule.symbols)
     molecules_with_no_flag = [i for i in range(1, natom + 1) if molecule.dissociation_flags[i - 1] == 'NO']
 
@@ -288,8 +290,12 @@ def fragements(molecule):
         if val < 1.0e-5:
  
             molecule.multiplicity -= 1
-            if molecule.multiplicity == 0:
-                molecule.multiplicity = 2
+            if spin_flip ==1:
+                if molecule.multiplicity == 2:
+                    molecule.multiplicity = 4
+            elif spin_flip ==0:
+                if molecule.multiplicity == 0:
+                    molecule.multiplicity = 2
             molecule.dissociation_flags[i - 1] = 'YES'
             dissociated = 1
             molecule.forces = np.delete(molecule.forces, 3 * (j-1))
