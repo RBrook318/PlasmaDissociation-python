@@ -1,33 +1,31 @@
 import sys
 import os
-import subprocess
-import numpy as np
 from init import Molecule
 import init
 import qchem as qc
 import prop
 import output as out
-import Result
-
+import result
+import json
 if __name__ == "__main__":
-    if len(sys.argv) != 11:
+    if len(sys.argv) != 1:
         print("Usage: python script_name.py <reps> <noofcpus> <natoms> <nstates>")
         sys.exit(1)
-
-    try:
-        reps= int(sys.argv[1])
-        ncpu = int(sys.argv[2])
-        n= int(sys.argv[3])
-        nstates = int(sys.argv[4])
-        nbranch = int(sys.argv[5])
-        increment = int(sys.argv[6])
-        endstep = int(sys.argv[7])
-        restart = str(sys.argv[8])
-        geom_start = int(sys.argv[9])
-        spin_flip = int(sys.argv[10])
-    except ValueError:
-        print("Invalid number of CPUs. Please provide a valid integer.")
-        sys.exit(1)
+    with open('inputs.json') as f:
+        inputs=json.load(f)
+    # Check basic arguements
+    reps=inputs["setup"]["repeats"]
+    ncpu=inputs["setup"]["cores"]
+    n=inputs["run"]["Atoms"]
+    nstates=inputs["run"]["States"]
+    nbranch=inputs["run"]["Branches"]
+    increment=inputs["run"]["Timestep"]
+    endstep=inputs["run"]["Tot_timesteps"]
+    restart=inputs["run"]["Restart"]
+    geom_start=inputs["run"]["Geom_start"]
+    spin_flip=inputs["run"]["Spin_flip"]
+   
+  
 
 if(restart == 'NO'):    
     molecule1 = init.create_molecule(reps+geom_start-1, n,nstates,spin_flip)
@@ -91,4 +89,4 @@ for i in range(int(startstep), endstep+1):
     
 
 
-Result.process_results()
+result.process_results()

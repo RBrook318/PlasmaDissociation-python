@@ -1,7 +1,3 @@
-import init
-import json
-
-
 def output_molecule(molecule): 
     output_xyz(molecule)
     output_momenta(molecule)

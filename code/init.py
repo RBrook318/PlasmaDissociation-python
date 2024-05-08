@@ -1,6 +1,5 @@
 # init.py
 import numpy as np
-from itertools import islice
 import json
 np.set_printoptions(precision=30)
 class NumpyEncoder(json.JSONEncoder):

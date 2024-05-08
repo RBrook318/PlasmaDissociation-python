@@ -15,48 +15,31 @@ import subprocess
 import getpass
 import random
 import shutil
-import glob
-import csv
-import inputs
+import json
 
-#########################################################################################
-#                              VARIABLES TO SET FOR SIMULATION                          #
-#########################################################################################
-
-# Number of repeats 
-repeats=5
-# #Number of parallel cores per folder/node (max 8)
-cores=8
-# Name of running folder 
-# Default : <method>-<system>-<random number> ie CCS-HP-31254
-# Otherwise:  <method>-<system>-<runfolder string>
-Runfolder='C2H4-SCF-python'
-# Restart Flag 
-restart = 'NO'
-# Initial restarts 
-Initre = 0
-#########################################################################################
-#                                   END OF INPUTS                                       #
 #########################################################################################
 #                * NO NEED TO SCROLL FURTHER IF USING AS BLACKBOX *                     #
 #########################################################################################
 
 
 if __name__=="__main__":
+    with open('inputs.json') as f:
+        inputs=json.load(f)
+
     #Check basic arguements
-    if(isinstance(repeats,int)==False):
+    if(isinstance(inputs["setup"]["repeats"],int)==False):
         sys.exit("Number of repeats must be an integer")
-    elif(isinstance(cores,int)==False):
+    elif(isinstance(inputs["setup"]["cores"],int)==False):
         sys.exit("Number of parallel cores must be an integer")
-    elif(repeats<1):
+    elif(inputs["setup"]["repeats"]<1):
         sys.exit("Not enough runs selected. Must be 1 or greater")
-    elif(cores>16):
+    elif(inputs["setup"]["cores"]>16):
         sys.exit("Too many cores selected. Maximum of 8 available")
-    elif(cores<1):
+    elif(inputs["setup"]["cores"]<1):
         sys.exit("Not enough cores selected. Must be 1 or greater")
 
-    if(restart=="NO"):
-        if(inputs.Geom not in{0,1}):
+    if(inputs["setup"]["repeats"]=="NO"):
+        if(inputs["run"]["Geom_flg"] not in{0,1}):
             sys.exit("Geometry flag must be zero or 1")
         else:
             print("Arguments checked")
@@ -74,32 +57,28 @@ if __name__=="__main__":
                 os.mkdir("../EXEC")
             EXDIR="../EXEC"
         else:
-            # subprocess.run(['module','load','mkl'])
             os.environ['LOGNAME']
-            EXDIR="/nobackup/"+getpass.getuser()
+            EXDIR="/nobackup/"+getpass.getuser()+"/scatter"
 
-        
-        if os.path.exists(EXDIR+"/"+Runfolder):
+        if os.path.exists(EXDIR+"/"+inputs["setup"]["Runfolder"]):
             value=input("File already exists do you want to delete it? y/n\n")
             if(value=='y'):
-                shutil.rmtree(EXDIR+"/"+Runfolder)
+                shutil.rmtree(EXDIR+"/"+inputs["setup"]["Runfolder"])
             else:
                 sys.exit("Runfolder already exists. Change the Runfolder name or delte/move it")
         
-        os.mkdir(EXDIR+"/"+Runfolder)
+        os.mkdir(EXDIR+"/"+inputs["setup"]["Runfolder"])
         
-        EXDIR1=EXDIR+"/"+Runfolder  
+        EXDIR1=EXDIR+"/"+inputs["setup"]["Runfolder"]  
         
         os.mkdir(EXDIR1+"/"+"results")
 
-            
         #Copies input files
-        shutil.copy2("run.py",EXDIR1)
-        shutil.copy2("inputs.py",EXDIR1)
-        shutil.copy2("../"+inputs.Molecule+"/bondarr.txt",EXDIR1+"/"+"results")
+        shutil.copy2("restart.py",EXDIR1)
+        shutil.copy2("inputs.json",EXDIR1)
+        shutil.copy2("bondarr.txt",EXDIR1+"/"+"results")
 
-
-        for i in range(repeats):
+        for i in range(inputs["setup"]["repeats"]):
             path=os.path.join(EXDIR1,"run-"+str(i+1))
             os.mkdir(EXDIR1+"/run-"+str(i+1))
             os.mkdir(EXDIR1+"/run-"+str(i+1)+"/output")
@@ -107,7 +86,6 @@ if __name__=="__main__":
             shutil.copy2("../"+inputs.Molecule+"/Geom/Geometry."+str(i+inputs.Geom_start),EXDIR1+"/run-"+str(i+1)+"/Code")
 
                 
-
         os.chdir(EXDIR1)
         EXDIR1=os.getcwd()
         if(HPCFLG==1):
@@ -117,12 +95,10 @@ if __name__=="__main__":
             f.write("#$ -cwd -V \n")
             f.write("#$ -l h_vmem=1G,h_rt=30:00:00 \n")
             f.write("#$ -N file1 \n")
-            f.write("#$ -pe smp "+str(cores)+" \n") #Use shared memory parallel environemnt 
-            f.write("#$ -t 1-"+str(repeats)+" \n")
+            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
             f.write("module load mkl \n")
-            f.write("module load test qchem \n")
-            f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write('tar -xzvf /nobackup/cm14oab/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
+            f.write("module load qchem \n")
             f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
@@ -133,43 +109,17 @@ if __name__=="__main__":
             f.write("module load anaconda \n")
             f.write("source activate base \n")
             f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-            f.write("python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
+            f.write("python main.py "+"$SGE_TASK_ID"+" "+str(inputs["setup"]["cores"])+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(inputs["setup"]["restart"]
+)+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
             f.close()
             # if(cores!=1):
             #     os.environ["OMP_NUM_THREADS"]=str(cores)
             command = ['qsub', '-hold_jid', 'qchemlocal', file1]
             subprocess.call(command)
             # subprocess.call(['qsub', file2])
-            for i in range(Initre):
-                number=random.randint(99999,1000000)
-                file2="Plasma"+str(number)+".sh"
-                f=open(file2,"w")
-                f.write("#$ -cwd -V \n")
-                f.write("#$ -l h_vmem=1G,h_rt=48:00:00 \n")
-                f.write("#$ -N file"+str(i+2)+" \n")
-                f.write("#$ -pe smp "+str(cores)+" \n") #Use shared memory parallel environemnt 
-                f.write("#$ -t 1-"+str(repeats)+" \n")
-                f.write("module load mkl \n")
-                f.write("module load test qchem \n")
-                f.write("module load qchem \n")
-                f.write("mkdir $TMPDIR/qchemlocal\n")
-                f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
-                f.write('qchemlocal=$TMPDIR/qchemlocal\n')
-                f.write('export QCHEM_HOME="$qchemlocal"\n')
-                f.write('export QC="$qchemlocal"\n')
-                f.write('export QCAUX="$QC/qcaux"\n')
-                f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
-                f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
-                f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-                f.write("module load anaconda \n")
-                f.write("source activate base \n")
-                f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-                f.write("python Main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+" "+str(inputs.Geom_start)+" "+str(inputs.Spin_flip))
-                f.close()
-                command = ['qsub', '-hold_jid', 'file'+str(i+1), file2]
-                subprocess.call(command)
+          
                 
-    elif(restart=='YES'):
+    elif(inputs["setup"]["restart"]=='YES'):
         print("Arguments checked")
         Hostname=socket.gethostname()
         if(Hostname==("login1.arc4.leeds.ac.uk")or(Hostname==("login2.arc4.leeds.ac.uk"))):
@@ -186,8 +136,8 @@ if __name__=="__main__":
             f=open(file1,"w")
             f.write("#$ -cwd -V \n")
             f.write("#$ -l h_vmem=1G,h_rt=48:00:00 \n")
-            f.write("#$ -pe smp "+str(cores)+" \n") #Use shared memory parallel environemnt 
-            f.write("#$ -t 1-"+str(repeats)+" \n")
+            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
             f.write("module load mkl \n")
             f.write("module load test qchem \n")
             f.write("module load qchem \n")
@@ -203,7 +153,7 @@ if __name__=="__main__":
             f.write("module load anaconda \n")
             f.write("source activate base \n")
             f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/Code \n")
-            f.write(" python main.py "+"$SGE_TASK_ID"+" "+str(cores)+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(restart)+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
+            f.write(" python main.py "+"$SGE_TASK_ID"+" "+str(inputs["setup"]["cores"])+" "+str(inputs.Atoms)+" "+str(inputs.States)+" "+str(inputs.Branch)+" "+str(inputs.Timestep)+" "+str(inputs.Tot_timesteps)+" "+str(inputs["setup"]["restart"])+' '+str(inputs.Geom_start)+' '+str(inputs.Spin_flip))
             f.close()
             # if(cores!=1):
             #     os.environ["OMP_NUM_THREADS"]=str(cores)
