@@ -136,7 +136,7 @@ def readqchem(output_file, molecule, natoms, nst,spin_flip):
                     e[0] = float(match.group())
                     # Update the SCF energy in the Molecule object
                     molecule.update_scf_energy(e)
-                    print("energy = ", e)
+
                 else:
                     print("Number not found in the line.")
                 break
@@ -147,7 +147,6 @@ def readqchem(output_file, molecule, natoms, nst,spin_flip):
         lines_read = 0
         skip_counter = 0
         lines_to_read = 4 * (math.ceil(natoms / 6)) - 1
-        print("lines = ", lines_to_read)
         start_index = 0
         for line in file:
             if found_target and lines_read < lines_to_read:
