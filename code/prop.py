@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
-import init
+
 np.set_printoptions(precision=30)
 
 def CompForceEhr(A, F, E, C,nst):

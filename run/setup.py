@@ -35,7 +35,7 @@ if os.path.exists("../"+Runfolder):
         shutil.copy2("restart.py",EXDIR)
         # Name of geometry file
         Geometry=inputs["setup"]["Geometry_file"]
-        atoms=["run"]["Atoms"]
+        atoms=inputs["run"]["Atoms"]
 
         # Make Geom folder
         os.mkdir(EXDIR+"/Geom")
@@ -70,8 +70,10 @@ if os.path.exists("../"+Runfolder):
             else: 
                 sys.exit("Folder does not exist. Please check spelling or create folder")
         EXDIR="../"+Runfolder
+        with open(EXDIR+'/inputs.json') as f:
+            inputs=json.load(f)
         geom_folder=EXDIR+"/geom-"+Runfolder
-        atoms=["run"]["Atoms"]
+        atoms=inputs["run"]["Atoms"]
     else:
         sys.exit("Runfolder already exists. Change the Runfolder name or delte/move it")
 
@@ -84,8 +86,10 @@ opt_geoms=org_conv_create.convert_to_bohr(opt_geoms)
 # Convert modes to form Create_geom.py uses
 modes=org_conv_create.organise_modes(modes)
 # Reads and multiplies by 1822.887
-masses=reads_writes.read_mass()
+masses=reads_writes.read_masses(EXDIR)
 # Creates the momenta
 Px, Py, Pz = org_conv_create.create_geom(atoms,mode_cnt,T,modes,masses,mom_num)
 # Writes momenta files to Geom folder
 reads_writes.write_momentas(opt_geoms,(EXDIR+"/Geom"),Px,Py,Pz,atoms,mom_num)
+# Read in Z-Matrix and create bond breaking file
+reads_writes.read_write_breaks(geom_folder,EXDIR,atoms)

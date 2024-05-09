@@ -5,7 +5,11 @@ def convert_to_bohr(coordinates):
     return [(atom, x * angstrom_to_bohr, y * angstrom_to_bohr, z * angstrom_to_bohr) for atom, x, y, z in coordinates]
 
 def organise_modes(modes):
-    numeric_modes = modes[:, 1:].astype(float)
+    numeric_modes = np.zeros((len(modes), len(modes[0])-1))
+    for i in range(len(modes)):
+        for j in range(len(modes[0])-1):
+            numeric_modes[i,j] = float(modes[i][j+1])
+
     # Combine the columns
     column1 = np.concatenate((numeric_modes[:, 0], numeric_modes[:, 3], numeric_modes[:, 6]))
     column2 = np.concatenate((numeric_modes[:, 1], numeric_modes[:, 4], numeric_modes[:, 7]))

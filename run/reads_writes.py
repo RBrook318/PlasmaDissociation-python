@@ -84,15 +84,35 @@ def read_f_out(geom_folder,atoms):
                 break
     return opt_geoms, modes, mode_cnt
 
-def read_masses():
-    m = np.loadtxt('m.txt')
+def read_write_breaks(geom_folder,folder,atoms):
+    z_matrix = []
+    with open(geom_folder+"/f.out", "r") as file:
+        for line in file:
+            if line.strip() == "Z-matrix Print:":
+                break
+        file.readline()
+        file.readline()
+        for i in range(atoms):
+            z_matrix.append(file.readline().split())
+    bonds = np.zeros((atoms, atoms))
+    for i in range(1,atoms):
+        bonds[i,int(z_matrix[i][1])-1] = 1
+    outputs = []
+    with open(folder+"/bondarr.txt", "w") as file:
+        for i in range(atoms):
+            for j in range(atoms):
+                if bonds[j,i] == 1:
+                    file.write((f'{i+1}'+'-'+f'{j+1}'+':'+z_matrix[i][0]+'-'+z_matrix[j][0]+'\n'))
+
+def read_masses(EXDIR):
+    m = np.loadtxt(EXDIR+'/m.txt')
     m = m * 1822.887  # Multiply m by 1836
     return m
 
 def write_momentas(opt_geoms,folder,Px,Py,Pz,n,mom_num):
     # Save each momentum to separate files
      for j in range(mom_num):
-        with open(f'Geom/Geometry.{j + 1}', 'w') as file:
+        with open(folder+f'/Geometry.{j + 1}', 'w') as file:
             for atom in range(n):
                file.write(f'{opt_geoms[atom][0]}  {opt_geoms[atom][1]}  {opt_geoms[atom][2]}  {opt_geoms[atom][3]}\n') 
             file.write("momentum\n")
