@@ -92,4 +92,4 @@ Px, Py, Pz = org_conv_create.create_geom(atoms,mode_cnt,T,modes,masses,mom_num)
 # Writes momenta files to Geom folder
 reads_writes.write_momentas(opt_geoms,(EXDIR+"/Geom"),Px,Py,Pz,atoms,mom_num)
 # Read in Z-Matrix and create bond breaking file
-reads_writes.read_write_breaks(geom_folder,EXDIR,atoms)
+reads_writes.read_write_breaks(geom_folder,EXDIR,opt_geoms,atoms)

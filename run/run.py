@@ -78,7 +78,7 @@ if __name__=="__main__":
     #Copies input files
     shutil.copy2("restart.py",EXDIR1)
     shutil.copy2("inputs.json",EXDIR1)
-    # shutil.copy2("bondarr.txt",EXDIR1+"/"+"results")
+    shutil.copy2("bondarr.txt",EXDIR1+"/"+"results")
 
     for i in range(inputs["setup"]["repeats"]):
         path=os.path.join(EXDIR1,"run-"+str(i+1))

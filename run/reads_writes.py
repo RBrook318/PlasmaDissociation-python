@@ -84,7 +84,7 @@ def read_f_out(geom_folder,atoms):
                 break
     return opt_geoms, modes, mode_cnt
 
-def read_write_breaks(geom_folder,folder,atoms):
+def read_write_breaks(geom_folder,folder,opt_geoms,atoms):
     z_matrix = []
     with open(geom_folder+"/f.out", "r") as file:
         for line in file:
@@ -123,3 +123,4 @@ def write_momentas(opt_geoms,folder,Px,Py,Pz,n,mom_num):
                 py_value = Py[atom, j]
                 pz_value = Pz[atom, j]
                 file.write(f'{px_value}  {py_value}  {pz_value}\n')
+
