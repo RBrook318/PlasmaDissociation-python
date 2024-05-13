@@ -15,16 +15,18 @@ import reads_writes
 import org_conv_create
 import json
 
-with open('inputs.json') as f:
-    inputs=json.load(f)
-# Runfolder name
-Runfolder=inputs["setup"]["Runfolder"]
-
-
-if os.path.exists("../"+Runfolder):
-    value=input("File already exists do you want to delete it or continue with part two of setup? y/2/n\n")
+if __name__ == "__main__":
+    with open('inputs.json') as f:
+        inputs=json.load(f)
+    # Runfolder name
+    Runfolder=inputs["setup"]["Runfolder"]
+    if os.path.exists("../"+Runfolder):
+        value=input("File already exists do you want to delete it or continue with part two of setup? y/2/n\n")
+        if(value=='y'):
+            shutil.rmtree("../"+Runfolder)
+    else:
+        value='y'
     if(value=='y'):
-        shutil.rmtree("../"+Runfolder)
         os.mkdir("../"+Runfolder)
         EXDIR="../"+Runfolder
         # Copies inputs.json file to execution folder
@@ -56,7 +58,8 @@ if os.path.exists("../"+Runfolder):
             shutil.copy2("setup.py",EXDIR)
             # Calls subroutine that writes the script to run the qchem job
             reads_writes.run_script_write(geom_folder) 
-            subprocess.call(["qsub", "geom.sh"],cwd=geom_folder) 
+            subprocess.call(["qsub", "geom.sh"],cwd=geom_folder)
+            exit()
         else:
             subprocess.call(["qchem", "-save", "-nt", "8", "opt_freq.inp", "f.out", "wf"],cwd=geom_folder)
     elif(value=='2'):
@@ -77,19 +80,19 @@ if os.path.exists("../"+Runfolder):
     else:
         sys.exit("Runfolder already exists. Change the Runfolder name or delte/move it")
 
-mom_num=inputs["setup"]["repeats"]
-T=inputs["run"]["Temp"]
-#  Reads in f_out file
-opt_geoms, modes, mode_cnt=reads_writes.read_f_out(geom_folder,atoms)
-# Convert Geometries to bohr
-opt_geoms=org_conv_create.convert_to_bohr(opt_geoms)
-# Convert modes to form Create_geom.py uses
-modes=org_conv_create.organise_modes(modes)
-# Reads and multiplies by 1822.887
-masses=reads_writes.read_masses(EXDIR)
-# Creates the momenta
-Px, Py, Pz = org_conv_create.create_geom(atoms,mode_cnt,T,modes,masses,mom_num)
-# Writes momenta files to Geom folder
-reads_writes.write_momentas(opt_geoms,(EXDIR+"/Geom"),Px,Py,Pz,atoms,mom_num)
-# Read in Z-Matrix and create bond breaking file
-reads_writes.read_write_breaks(geom_folder,EXDIR,opt_geoms,atoms)
+    mom_num=inputs["setup"]["repeats"]
+    T=inputs["run"]["Temp"]
+    #  Reads in f_out file
+    opt_geoms, modes, mode_cnt=reads_writes.read_f_out(geom_folder,atoms)
+    # Convert Geometries to bohr
+    opt_geoms=org_conv_create.convert_to_bohr(opt_geoms)
+    # Convert modes to form Create_geom.py uses
+    modes=org_conv_create.organise_modes(modes)
+    # Reads and multiplies by 1822.887
+    masses=reads_writes.read_masses(EXDIR)
+    # Creates the momenta
+    Px, Py, Pz = org_conv_create.create_geom(atoms,mode_cnt,T,modes,masses,mom_num)
+    # Writes momenta files to Geom folder
+    reads_writes.write_momentas(opt_geoms,(EXDIR+"/Geom"),Px,Py,Pz,atoms,mom_num)
+    # Read in Z-Matrix and create bond breaking file
+    reads_writes.read_write_breaks(geom_folder,EXDIR,opt_geoms,atoms)
