@@ -84,17 +84,19 @@ if __name__=="__main__":
         path=os.path.join(EXDIR1,"run-"+str(i+1))
         os.mkdir(EXDIR1+"/run-"+str(i+1))
         os.mkdir(EXDIR1+"/run-"+str(i+1)+"/output")
-        os.mkdir(EXDIR1+"/run-"+str(i+1)+"/code")
         # shutil.copytree("../code", EXDIR1+"/run-"+str(i+1)+"/code") 
-        shutil.copy2("Geom/Geometry."+str(i+1),EXDIR1+"/run-"+str(i+1)+"/code/Geometry."+str(i+1))
-
+        shutil.copy2("Geom/Geometry."+str(i+1),EXDIR1+"/run-"+str(i+1)+"/Geometry")
+#    CAN GET RID OF .# ON GEOMETRY FILES SO PYTHON CAN RUN WITHIN FILE
     os.chdir('../code')
     subprocess.run(['pyinstaller', 'main.py', '--onefile']) 
     for i in range(inputs["setup"]["repeats"]):  
-        shutil.copy2("dist/main",EXDIR1+"/run-"+str(i+1)+"/code/main")
+        shutil.copy2("dist/main",EXDIR1+"/run-"+str(i+1)+"/main")
       
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
+
+    # ADD BACK TEMP DIRECTORY FUNCTIONALITY BUT DON'T NEED TO RECOMPILE(MAYBE?)
+    # The geometry can by specified in bohr by setting the $rem variable INPUT_BOHR equal to TRUE.
     if(HPCFLG==1):
         number=random.randint(99999,1000000)
         file1="Plasma"+str(number)+".sh"
@@ -104,23 +106,22 @@ if __name__=="__main__":
         f.write("#$ -N file1 \n")
         f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
-        f.write("module load mkl \n")
         f.write("module load qchem \n")
-        f.write('qchemlocal=/nobackup/cm14oab/scatter/qchem/local/apps/applications/qchem/6.0.1\n')
+        f.write("mkdir $TMPDIR/qchemlocal\n")
+        f.write('tar -xzvf /cm14oab/scatter/qchem.tar.gz. -C $TMPDIR/qchemlocal\n')
+        f.write('qchemlocal=$TMPDIR/qchemlocal\n')
         f.write('export QCHEM_HOME="$qchemlocal"\n')
         f.write('export QC="$qchemlocal"\n')
         f.write('export QCAUX="$QC/qcaux"\n')
         f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
         f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
         f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-        f.write("module load anaconda \n")
-        f.write("source activate scatter \n")
-        f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID/code \n")
-        f.write("./main 0")
+        f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID \n")
+        f.write("./main 0 "+"$SGE_TASK_ID")
         f.close()
     
-        # command = ['qsub', '-hold_jid', 'qchemlocal', file1]
-        command = ['qsub' , file1]
+        command = ['qsub', '-hold_jid', 'qchemlocal', file1]
+        
         # subprocess.call(command)
         # subprocess.call(['qsub', file2])
           

@@ -145,7 +145,7 @@ def create_empty_molecule(natoms,nst,spin_flip):
     return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity)
 
 def initialize_structure(reps,natoms,nst,spin_flip):
-    file_path = f"Geometry.{reps}"  # Updated file path with reps variable
+    file_path = f"Geometry"  # Updated file path with reps variable
 
     with open(file_path, 'r') as file:
         lines = file.readlines()

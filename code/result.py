@@ -13,7 +13,7 @@ def process_results():
 
 def read_bondarr():
     bondarr = {}
-    with open('../../results/bondarr.txt', 'r') as file:
+    with open('../results/bondarr.txt', 'r') as file:
         for line in file:
             line = line.strip()
             if line:  # Skip empty lines
@@ -30,7 +30,7 @@ def read_bondarr():
 def detect_dissociation(bondarr):
 
     # Read the input data from a file
-    with open('../output/xyz.all', 'r') as f:
+    with open('output/xyz.all', 'r') as f:
         lines = f.readlines()
 
     # Initialize variables to store the current timestep, atom data, and dissociation flag
@@ -39,7 +39,7 @@ def detect_dissociation(bondarr):
     dissociated_bonds = set()  # Keep track of dissociated bond pairs
 
     # Open the output file for writing
-    with open('../output/dissociation.out', 'w') as output:
+    with open('output/dissociation.out', 'w') as output:
         # Iterate through the lines and process the data
         for line in lines:
             parts = line.split()
@@ -65,7 +65,7 @@ def detect_dissociation(bondarr):
                 atoms[atom_num] = atom_info
 
 def compile_results():
-    with open('../output/dissociation.out', "r") as f:
+    with open('output/dissociation.out', "r") as f:
         lines = f.readlines()
         print(lines)
 
@@ -78,14 +78,14 @@ def compile_results():
             bond_number = bond_info[1].strip()
             
             # Write to bond-type-specific output file
-            bond_type_file = os.path.join("../../results", f"{bond_type}.out")
+            bond_type_file = os.path.join("../results", f"{bond_type}.out")
             with open(bond_type_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
                 
 
             
             # Write to old output file format and order by timestep
-            bond_number_file = os.path.join("../../results", f"{bond_number}.out")
+            bond_number_file = os.path.join("../results", f"{bond_number}.out")
             with open(bond_number_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
 

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
+from chemformula import ChemFormula
 
 np.set_printoptions(precision=30)
 
@@ -141,21 +142,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     
     Coupling = 0
     for i in range(0, natoms):
-        if shrunk_molecule.symbols[i] == 'C':
-            mass[i] = 12 * Mau
-        elif shrunk_molecule.symbols[i] == 'N':
-            mass[i] = 14 * Mau
-        elif shrunk_molecule.symbols[i] == 'H':
-            mass[i] = Mau
-        elif shrunk_molecule.symbols[i] == 'D':
-            mass[i] = 2 * Mau
-        elif shrunk_molecule.symbols[i] == 'F':
-            mass[i] = 19 * Mau
-        elif shrunk_molecule.symbols[i] == 'O':
-            mass[i] = 16 * Mau
-        else:
-            print('Atom', shrunk_molecule.symbols[i], 'is not supported')
-            raise ValueError('Unsupported atom type')
+        mass[i] = Mau * int(ChemFormula(shrunk_molecule.symbols[i]).formula_weight)
         velocities[i,:] = shrunk_molecule.momenta[i,:]/mass[i]
 
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
@@ -209,21 +196,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     Coupling = 0
     natoms = len(shrunk_molecule1.symbols)
     for i in range(0, natoms):
-        if shrunk_molecule1.symbols[i] == 'C':
-            mass[i] = 12 * Mau
-        elif shrunk_molecule1.symbols[i] == 'N':
-            mass[i] = 14 * Mau
-        elif shrunk_molecule1.symbols[i] == 'H':
-            mass[i] = Mau
-        elif shrunk_molecule1.symbols[i] == 'D':
-            mass[i] = 2 * Mau
-        elif shrunk_molecule1.symbols[i] == 'F':
-            mass[i] = 19 * Mau
-        elif shrunk_molecule1.symbols[i] == 'O':
-            mass[i] = 16 * Mau
-        else:
-            print('Atom', shrunk_molecule1.symbols[i], 'is not supported')
-            raise ValueError('Unsupported atom type')
+        mass[i] = Mau * int(ChemFormula(shrunk_molecule1.symbols[i]).formula_weight)
         velocities_1[i,:] = shrunk_molecule1.momenta[i,:]/mass[i]
         velocities_2[i,:] = shrunk_molecule2.momenta[i,:]/mass[i]
         
@@ -322,17 +295,8 @@ def prop_diss(molecule, increment):
     velocities = np.zeros((3))
 
     for i in dis_index:
-        if molecule.symbols[i] == 'C':
-            mass = 12 * Mau
-        elif molecule.symbols[i] == 'N':
-            mass = 14 * Mau
-        elif molecule.symbols[i] == 'H':
-            mass = Mau
-        elif molecule.symbols[i] == 'D':
-            mass = 2 * Mau
-        elif molecule.symbols[i] == 'F':
-            mass = 19 * Mau
-
+        mass = Mau * int(ChemFormula(molecule.symbols[i]).formula_weight)
+       
         velocities[:] = molecule.momenta[i, :] / mass
         molecule.coordinates[i, :] = molecule.coordinates[i, :] + increment * velocities[:]
 

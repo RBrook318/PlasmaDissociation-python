@@ -97,7 +97,6 @@ def read_write_breaks(geom_folder,folder,opt_geoms,atoms):
     bonds = np.zeros((atoms, atoms))
     for i in range(1,atoms):
         bonds[i,int(z_matrix[i][1])-1] = 1
-    outputs = []
     with open(folder+"/bondarr.txt", "w") as file:
         for i in range(atoms):
             for j in range(atoms):

@@ -2,10 +2,10 @@ def output_molecule(molecule):
     output_xyz(molecule)
     output_momenta(molecule)
     output_forces(molecule)
-    molecule.to_json('../output/molecule.json')
+    molecule.to_json('output/molecule.json')
 
 def output_xyz(molecule):
-    with open("../output/xyz.all", "a") as xyz_file:
+    with open("output/xyz.all", "a") as xyz_file:
         # Write the timestep
         xyz_file.write(f"Timestep: {molecule.timestep}\n")
 
@@ -16,7 +16,7 @@ def output_xyz(molecule):
         xyz_file.write("-" * 40 + "\n")
 
 def output_momenta(molecule):
-    with open("../output/momenta.all", "a") as momenta_file:
+    with open("output/momenta.all", "a") as momenta_file:
         # Write the timestep
         momenta_file.write(f"Timestep: {molecule.timestep}\n")
 
@@ -29,7 +29,7 @@ def output_momenta(molecule):
         momenta_file.write("-" * 40 + "\n")
 
 def output_forces(molecule):
-    with open("../output/forces.all", "a") as forces_file:
+    with open("output/forces.all", "a") as forces_file:
         # Write the timestep
         forces_file.write(f"Timestep: {molecule.timestep}\n")
 

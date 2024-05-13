@@ -9,16 +9,8 @@ import result
 import json
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python script_name.py <reps> <noofcpus> <natoms> <nstates>")
-        sys.exit(1)
-
-    if(int(sys.argv[1])==0):
-        restart='NO'
-    elif(int(sys.argv[1])==1):
-        restart='YES'
-
-    with open('../../inputs.json') as f:
+    # Load inputs
+    with open('../inputs.json') as f:
         inputs=json.load(f)
     # Check basic arguements
     reps=inputs["setup"]["repeats"]
@@ -30,7 +22,24 @@ if __name__ == "__main__":
     endstep=inputs["run"]["Tot_timesteps"]
     geom_start=inputs["run"]["Geom_start"]
     spin_flip=inputs["run"]["Spin_flip"]
-
+    
+    # Check if run is a restart
+    if os.path.exists("output/xyz.all"):
+        with open("output/xyz.all", "r") as xyz_file:
+            lines = xyz_file.readlines()
+        for line in reversed(lines):
+            if "Timestep:" in line:
+                break
+        line=line.split()
+        third_last_line = int(line[1])
+        third_last_line=third_last_line/increment
+        print("Time step: ", third_last_line)
+        if(third_last_line>=endstep):
+            sys.exit("Run already completed")
+        else:
+            restart='YES'
+    else: 
+         restart='NO'
   
 if(restart == 'NO'):    
     molecule1 = init.create_molecule(reps+geom_start-1, n,nstates,spin_flip)
@@ -41,7 +50,7 @@ if(restart == 'NO'):
     Guess = True
 elif(restart == 'YES'):
     molecule2 = init.create_molecule(None,n,nstates,spin_flip)
-    filename = '../output/molecule.json'
+    filename = 'output/molecule.json'
     if os.path.exists(filename):
         molecule1 = Molecule.from_json(filename)
         startstep = molecule1.timestep / increment
