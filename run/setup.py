@@ -11,10 +11,16 @@ import os
 import sys
 import shutil
 import subprocess
-import reads_writes
+# import reads_writes
 import org_conv_create
 import json
-
+from pyqchem import QchemInput
+# from pyqchem.parsers.parser_optimization import basic_optimization
+# from pyqchem.parsers.parser_frequencies import basic_frequencies
+from pyqchem.tools import get_geometry_from_pubchem
+from pyqchem import get_output_from_qchem
+from pyqchem.parsers.parser_optimization import basic_optimization
+from pyqchem.parsers.parser_frequencies import basic_frequencies
 if __name__ == "__main__":
     with open('inputs.json') as f:
         inputs=json.load(f)
@@ -36,15 +42,42 @@ if __name__ == "__main__":
         # Copy restart script to start folder
         shutil.copy2("restart.py",EXDIR)
         # Name of geometry file
-        Geometry=inputs["setup"]["Geometry_file"]
+     
         atoms=inputs["run"]["Atoms"]
-
         # Make Geom folder
         os.mkdir(EXDIR+"/Geom")
         # Makes folder for initial geometry
         os.mkdir(EXDIR+"/geom-"+Runfolder)
         geom_folder=EXDIR+"/geom-"+Runfolder
 
+        molecule = get_geometry_from_pubchem(inputs["run"]["Molecule"])
+
+        qc_inp = QchemInput(molecule,
+                            jobtype='opt',
+                            exchange='BHHLYP !50% HF +  50% Becke88 exchange',
+                            basis='6-31+G*',
+                            unrestricted=True,
+                            max_scf_cycles=500,
+                            sym_ignore=True,
+                            scf_algorithm='diis')
+        print(qc_inp.molecule)
+        print(qc_inp.molecule.get_symbols())
+        print(qc_inp.molecule.get_atomic_numbers())
+
+        output = get_output_from_qchem(qc_inp,processors=2)
+        pasrser_output = basic_optimization(output)
+        print(pasrser_output['optimized_molecule'])
+        qc_inp = QchemInput(pasrser_output['optimized_molecule'],
+                            jobtype='FREQ',
+                            exchange='BHHLYP',
+                            basis='6-31+G*')
+        output = get_output_from_qchem(qc_inp,processors=2)
+        # print(output)
+        
+        pasrser_output = basic_frequencies(output)
+        for line in pasrser_output['modes']:
+            print(line['displacement'])
+        exit()
         # Read in geometry file
         coords=[]
         reads_writes.read_xyz(Geometry, atoms, coords)
