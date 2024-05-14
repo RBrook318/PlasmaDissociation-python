@@ -55,7 +55,6 @@ if __name__ == "__main__":
 
         value=input("Run the geometry calculation as a job or locally? y/n\n")
         if(value=='y'):
-            shutil.copy2("setup.py",EXDIR)
             # Calls subroutine that writes the script to run the qchem job
             reads_writes.run_script_write(geom_folder) 
             subprocess.call(["qsub", "geom.sh"],cwd=geom_folder)

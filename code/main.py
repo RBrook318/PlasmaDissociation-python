@@ -42,7 +42,7 @@ if __name__ == "__main__":
          restart='NO'
   
 if(restart == 'NO'):    
-    molecule1 = init.create_molecule(reps+geom_start-1, n,nstates,spin_flip)
+    molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
     molecule2 = init.create_molecule(None, n,nstates,spin_flip)
     qc.run_qchem(ncpu,'f.in', molecule1,n, nstates,spin_flip,Guess=False)
     out.output_molecule(molecule1)

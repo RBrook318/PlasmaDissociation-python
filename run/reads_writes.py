@@ -10,7 +10,7 @@ def read_xyz(Geometry, atoms, coords):
 def run_script_write(geom_folder):
     with open(geom_folder+"/geom.sh", "w") as file:
         file.write("#$ -cwd -V \n")
-        file.write("#$ -l h_vmem=1G,h_rt=1:00:00\n")
+        file.write("#$ -l h_vmem=1G,h_rt=4:00:00\n")
         file.write("#$ -pe smp 8\n")
         file.write("module load test qchem\n")
         file.write("module load intel\n")
@@ -35,7 +35,7 @@ def write_opt_freq_input(geom_folder, atoms, coords):
         file.write("EXCHANGE            BHHLYP !50% HF +  50% Becke88 exchange\n")
         file.write("BASIS               6-31+G*\n")
         file.write("UNRESTRICTED        True\n")
-        file.write("MAX_SCF_CYCLES      500\n")
+        file.write("MAX_SCF_CYCLES      4000\n")
         file.write("SYM_IGNORE          True\n")
         file.write("SCF_Algorithm       DIIS\n")
         file.write("$end\n")
