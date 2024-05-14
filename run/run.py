@@ -13,7 +13,6 @@ import socket
 import os
 import subprocess
 import getpass
-import random
 import shutil
 import json
 
@@ -105,7 +104,7 @@ if __name__=="__main__":
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
         f.write("module load qchem \n")
         f.write("mkdir $TMPDIR/qchemlocal\n")
-        f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/scatter/qchem.tar.gz. -C $TMPDIR/qchemlocal\n")
+        f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/scatter/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
         f.write('qchemlocal=$TMPDIR/qchemlocal/apps/applications/qchem/6.0.1/1/default\n')
         f.write('export QCHEM_HOME="$qchemlocal"\n')
         f.write('export QC="$qchemlocal"\n')
