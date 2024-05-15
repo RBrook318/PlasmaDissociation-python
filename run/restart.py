@@ -34,8 +34,9 @@ if __name__=="__main__":
     f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
     f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
     f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-    f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID \n")
-    f.write("./main")
+    f.write("export QCSCRATCH="+EXDIR1+"/rep-$SGE_TASK_ID/tmp \n")
+    f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
+    f.write("./../main")
     f.close()
     command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_1', file1]
     subprocess.call(command)
@@ -58,8 +59,9 @@ if __name__=="__main__":
         f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
         f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
         f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-        f.write("cd "+EXDIR1+"/run-$SGE_TASK_ID \n")
-        f.write("./main")
+        f.write("export QCSCRATCH="+EXDIR1+"/rep-$SGE_TASK_ID/tmp \n")
+        f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
+        f.write("./../main")
         f.close()
         command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+2), '-hold_jid', 'Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+1), file1]
         subprocess.call(command)
