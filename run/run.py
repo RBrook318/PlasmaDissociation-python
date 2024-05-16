@@ -49,13 +49,7 @@ if __name__=="__main__":
         else:
             HPCFLG=0
 
-    #Makes execution folder and run folder
-    # if(HPCFLG==0): #change this to 0 before uploading.
-    #     if not os.path.exists("../EXEC"):
-    #         os.mkdir("../EXEC")
-    #     EXDIR="../EXEC"
-    # else:
-    os.environ['LOGNAME']
+
     EXDIR="/nobackup/"+getpass.getuser()+"/scatter"
     
     if os.path.exists(EXDIR+"/"+inputs["setup"]["Runfolder"]):
@@ -81,15 +75,16 @@ if __name__=="__main__":
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/tmp")
 
     os.chdir('../code')
-    subprocess.run(['pyinstaller', 'setup.py', '--onefile'])
-    shutil.copy2("dist/main",EXDIR1+"/setup/setup")
+    # subprocess.run(['pyinstaller', 'setup.py', '--onefile'])
+    # shutil.copy2("dist/setup",EXDIR1+"/setup/setup")
+    shutil.copy2("setup.py",EXDIR1+"/setup/setup.py")
     subprocess.run(['pyinstaller', 'main.py', '--onefile'])
     shutil.copy2("dist/main",EXDIR1+"/main")
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
-    # shutil.copy2("bondarr.txt",EXDIR1+"/"+"results")
-
+    
+    # Makes Job Submission sctipt for iniital setup
     file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
     f=open(file2,"w")
     f.write("#$ -cwd -V \n")
@@ -112,7 +107,7 @@ if __name__=="__main__":
     f.close()
     command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
     subprocess.call(command)
-    # The geometry can by specified in bohr by setting the $rem variable INPUT_BOHR equal to TRUE.
+    
    
     file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
     f=open(file1,"w")

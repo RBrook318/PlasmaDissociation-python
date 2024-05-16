@@ -19,9 +19,7 @@ def create_qchem_input(output_file, molecule, spin_flip, scf_algorithm="DIIS", G
     coordinates_bohr = molecule.coordinates  # Coordinates are in Bohr
     dissociation_flags = molecule.dissociation_flags
     multiplicity = molecule.multiplicity
-    # Convert coordinates from Bohr to Angstrom
-    bohr_to_angstrom = 0.529177
-    coordinates_angstrom = coordinates_bohr * bohr_to_angstrom
+    
 
     # Filter indices based on dissociation flag
     active_indices = [i for i, flag in enumerate(dissociation_flags) if flag == 'NO']

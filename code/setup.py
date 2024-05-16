@@ -7,22 +7,15 @@
 #
 #########################################################################################
 
-import os
-import sys
-import shutil
-import subprocess
-import numpy as np
-# import reads_writes
 
+import numpy as np
 import json
 from pyqchem import QchemInput
-# from pyqchem.parsers.parser_optimization import basic_optimization
-# from pyqchem.parsers.parser_frequencies import basic_frequencies
 from pyqchem.tools import get_geometry_from_pubchem
 from pyqchem import get_output_from_qchem
 from pyqchem.parsers.parser_optimization import basic_optimization
 from pyqchem.parsers.parser_frequencies import basic_frequencies
-import os
+
 
 def convert_to_bohr(coordinates):
     angstrom_to_bohr = 1.88973
@@ -42,7 +35,7 @@ def organise_modes(modes):
     reshaped_data = np.column_stack((column1, column2, column3))
     return reshaped_data
 
-def bondarr(output,atoms):
+def bondarr(output):
     z_matrix = []
 
     for line in file:
@@ -111,7 +104,7 @@ if __name__ == "__main__":
     pasrser_output = basic_optimization(output)
     opt_geoms=(pasrser_output['optimized_molecule'])
     # Write bond breaking file to results folder
-    bondarr(output,atoms)
+    bondarr(output)
 
     # Find Normal modes
     qc_inp = QchemInput(opt_geoms,
@@ -147,3 +140,4 @@ if __name__ == "__main__":
                 pz_value = Pz[atom, j]
                 file.write(f'{px_value}  {py_value}  {pz_value}\n')
 
+# The geometry can by specified in bohr by setting the $rem variable INPUT_BOHR equal to TRUE.
