@@ -19,41 +19,39 @@ from pyqchem.parsers.parser_frequencies import basic_frequencies
 
 def convert_to_bohr(coordinates):
     angstrom_to_bohr = 1.88973
-    return [(atom, x * angstrom_to_bohr, y * angstrom_to_bohr, z * angstrom_to_bohr) for atom, x, y, z in coordinates]
+    values=coordinates.get_coordinates()
+    atom=coordinates.get_symbols()
+    output = ""
+    for i in range(len(atom)):
+        output+=(atom[i]+" "+str(float(values[i][0])*angstrom_to_bohr)+" "+str(float(values[i][1])*angstrom_to_bohr)+" "+str(float(values[i][2])*angstrom_to_bohr)+" \n")
+    return output
+   
 
-def organise_modes(modes):
-    numeric_modes = np.zeros((len(modes), len(modes[0])-1))
+def organise_modes(modes,atoms):
+    numeric_modes = np.zeros((len(modes)*atoms, 3))
+    cnt=0
     for i in range(len(modes)):
-        for j in range(len(modes[0])-1):
-            numeric_modes[i,j] = float(modes[i][j+1])
+        for j in range(atoms):
+            numeric_modes[cnt,0]= float(modes[i]['displacement'][j][0])
+            numeric_modes[cnt,1]= float(modes[i]['displacement'][j][1])
+            numeric_modes[cnt,2]= float(modes[i]['displacement'][j][2])
+            cnt+=1
+   
+    return numeric_modes
 
-    # Combine the columns
-    column1 = np.concatenate((numeric_modes[:, 0], numeric_modes[:, 3], numeric_modes[:, 6]))
-    column2 = np.concatenate((numeric_modes[:, 1], numeric_modes[:, 4], numeric_modes[:, 7]))
-    column3 = np.concatenate((numeric_modes[:, 2], numeric_modes[:, 5], numeric_modes[:, 8]))
-    # Stack the columns horizontally to create a new array
-    reshaped_data = np.column_stack((column1, column2, column3))
-    return reshaped_data
-
-def bondarr(output):
-    z_matrix = []
-
-    for line in file:
-        if line.strip() == "Z-matrix Print:":
-            break
-    file.readline()
-    file.readline()
-    for i in range(atoms):
-        z_matrix.append(file.readline().split())
-
-    bonds = np.zeros((atoms, atoms))
-    for i in range(1,atoms):
-        bonds[i,int(z_matrix[i][1])-1] = 1
+def bondarr(molecule):
+    bonds = molecule.get_connectivity()
+    atoms = molecule.get_symbols()
+    unique_bonds = set()
+    
     with open("../results/bondarr.txt", "w") as file:
-        for i in range(atoms):
-            for j in range(atoms):
-                if bonds[j,i] == 1:
-                    file.write((f'{i+1}'+'-'+f'{j+1}'+':'+z_matrix[i][0]+'-'+z_matrix[j][0]+'\n')) 
+        for bond in bonds:
+            sorted_bond = tuple(sorted(bond))
+            if sorted_bond not in unique_bonds:
+                unique_bonds.add(sorted_bond)
+                file.write(f"{bond[0]}-{bond[1]}:{atoms[bond[0]-1]}-{atoms[bond[1]-1]}\n")
+    
+    return
 
 def create_geom(n,nmod,T,modes,m,mom_num):
     Ax = modes[:, 0]
@@ -89,6 +87,8 @@ if __name__ == "__main__":
         inputs=json.load(f)
     # Load molecule coordinates from pubchem
     molecule = get_geometry_from_pubchem(inputs["run"]["Molecule"])
+    # Write bond breaking file to results folder
+   
     # Optimise the molecule
     qc_inp = QchemInput(molecule,
                         jobtype='opt',
@@ -100,37 +100,37 @@ if __name__ == "__main__":
                         scf_algorithm='diis')
     
     output = get_output_from_qchem(qc_inp,processors=2)
-    open('optimisation.out').write(output)
+    with open('optimisation.out', 'w') as f:
+        f.write(output)
     pasrser_output = basic_optimization(output)
     opt_geoms=(pasrser_output['optimized_molecule'])
-    # Write bond breaking file to results folder
-    bondarr(output)
-
+    bondarr(opt_geoms)
     # Find Normal modes
     qc_inp = QchemInput(opt_geoms,
                         jobtype='FREQ',
                         exchange='BHHLYP',
                         basis='6-31+G*')
     output = get_output_from_qchem(qc_inp,processors=2)
-    open('modes.out').write(output)
+    with open('modes.out', 'w') as f:
+        f.write(output)
     pasrser_output = basic_frequencies(output)
-    num_modes = len(pasrser_output['number_of_modes'])
+    num_modes = len(pasrser_output['modes'])
     # Need to check this works correctly 
-    modes=organise_modes(pasrser_output['modes'])
+    modes=organise_modes(pasrser_output['modes'],inputs["run"]["Atoms"])
     # Convert Geometries to bohr
     opt_geoms=convert_to_bohr(opt_geoms)
-    open(inputs["run"]["Molecule"]+'.xyz').write(opt_geoms)
+    with open(inputs["run"]["Molecule"]+'.xyz','w') as f:
+        f.write(opt_geoms)
 
     # Extract masses of atoms   
-    masses=int(qc_inp.molecule.get_atomic_numbers())
+    masses=(qc_inp.molecule.get_atomic_numbers())
     Px, Py, Pz = create_geom(inputs["run"]["Atoms"],num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
     # Extract atom symbols
     atoms=qc_inp.molecule.get_symbols()
     # Write momenta files to repetition folder
     for j in range(inputs["setup"]["repeats"]):
-        with open('../rep'+str(j+1)+'/Geometry', 'w') as file:
-            for atom in range(inputs["run"]["Atoms"]):
-               file.write(f'{atoms[atom]}  {opt_geoms[atom][0]}  {opt_geoms[atom][1]}  {opt_geoms[atom][2]}\n') 
+        with open('../rep-'+str(j+1)+'/Geometry', 'w') as file:
+            file.write(opt_geoms)
             file.write("momentum\n")
             # Write Px, Py, and Pz for each atom on the same line
             for atom in range(inputs["run"]["Atoms"]):
@@ -139,5 +139,3 @@ if __name__ == "__main__":
                 py_value = Py[atom, j]
                 pz_value = Pz[atom, j]
                 file.write(f'{px_value}  {py_value}  {pz_value}\n')
-
-# The geometry can by specified in bohr by setting the $rem variable INPUT_BOHR equal to TRUE.

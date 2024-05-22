@@ -3,7 +3,9 @@ import subprocess
 import os
 import numpy as np 
 import re
-import math 
+import math
+from pyqchem import QchemInput, Structure
+from pyqchem import get_output_from_qchem
 np.set_printoptions(precision =30)
 
 def file_contains_string(file_path, search_string):
@@ -13,59 +15,45 @@ def file_contains_string(file_path, search_string):
                 return True
     return False
 
-def create_qchem_input(output_file, molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
-    # Extract molecule information
-    symbols = molecule.symbols
-    coordinates_bohr = molecule.coordinates  # Coordinates are in Bohr
-    dissociation_flags = molecule.dissociation_flags
-    multiplicity = molecule.multiplicity
+def create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
     
-
     # Filter indices based on dissociation flag
-    active_indices = [i for i, flag in enumerate(dissociation_flags) if flag == 'NO']
-    # Q-Chem input file content
-    qchem_input = (
-        "$molecule\n"
-        f"0 {multiplicity}\n"
-        + "".join([f"{symbols[i]}   {coordinates_angstrom[i, 0]:.12f}   {coordinates_angstrom[i, 1]:.12f}   {coordinates_angstrom[i, 2]:.12f}\n" for i in active_indices])
-        + "$end\n"
-        "$rem\n"
-        "    JOBTYPE             Force\n"
-        "    EXCHANGE            BHHLYP\n"
-        "    BASIS               6-31+G*\n"
-        "    UNRESTRICTED        True\n"
-        "    MAX_SCF_CYCLES      500\n"
-        "    SYM_IGNORE          True\n"
-        f"    SCF_Algorithm       {scf_algorithm}\n"  # Use the specified SCF algorithm
-        "\n"
-    )
-
-    if spin_flip==1:
-        qchem_input += (
-            "    SPIN_FLIP           True\n"    
-            "    SET_Iter            500\n"
-        "\n"
-        )
+    active_indices = [i for i, flag in enumerate(molecule.dissociation_flags) if flag == 'NO']
+    active_coords = [molecule.coordinates[i] for i in active_indices]
+    active_symbols = [molecule.symbols[i] for i in active_indices]
+    molecule = Structure(coordinates=active_coords, symbols=active_symbols, multiplicity=molecule.multiplicity)
+    if spin_flip==0:
+        qc_inp=QchemInput(molecule,
+                        jobtype='force',
+                        exchange='BHHLYP',
+                        basis='6-31+G*',
+                        unrestricted=True,
+                        max_scf_cycles=500,
+                        sym_ignore=True,
+                        scf_algorithm=scf_algorithm,
+                        extra_rem_keywords={'input_bohr':'true'},
+                        scf_guess=Guess
+                        )       
+    elif spin_flip==1:                
+        qc_inp=QchemInput(molecule,
+                        jobtype='force',
+                        exchange='BHHLYP',
+                        basis='6-31+G*',
+                        unrestricted=True,
+                        max_scf_cycles=500,
+                        sym_ignore=True,
+                        scf_algorithm=scf_algorithm,
+                        scf_guess=Guess,
+                        extra_rem_keywords={'input_bohr':'true','spin_flip':'true'},
+                        set_iter=500
+                        )
+        return qc_inp
+                      
     
-    # Add SCF_GUESS line if Guess is True
-    if Guess:
-        qchem_input += "    SCF_GUESS           Read\n"
     
-    if spin_flip==1:
-        qchem_input += (
-            "\n"
-            "CIS_N_ROOTS 1\n"
-            "CIS_STATE_DERIV 1\n"
-            "$end\n"
-        )
-    qchem_input += (
-        "$end\n"
-    )
+    
 
 
-    # Write the Q-Chem input content to the output file
-    with open(output_file, "w") as qchem_file:
-        qchem_file.write(qchem_input)
 
 def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True): 
 
@@ -73,14 +61,11 @@ def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True):
         subprocess.run(["qchem", "-save", "-nt", str(ncpu), file, output, "wf"])
 
     # Prepare f.inp file
-    create_qchem_input(file, molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
-
-    # Submit the initial QChem job
-    submit_qchem_job(ncpu,file,"f.out")
-
-
-
-    if file_contains_string("f.out", "Total job time"):
+    qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
+    output = get_output_from_qchem(qc_inp,processors=ncpu)
+   
+   
+    if "Total job time" in output:
         # Job completed successfully
         readqchem('f.out', molecule, n, nstates,spin_flip)
         # Append f.out content to f.all
@@ -89,11 +74,12 @@ def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True):
         pass   
     else:
         # Retry with a different setup
-        create_qchem_input("f.inp", molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False)
-        submit_qchem_job(ncpu, "f.inp", "f2.out")
+        qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'false'})
+        output = get_output_from_qchem(qc_inp,processors=ncpu)
+        
 
         # Check for the second failure
-        if file_contains_string("f2.out", "Total job time"):
+        if "Total job time" in output:
             readqchem('f2.out', molecule, n, nstates,spin_flip)
             with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
                 f_all.write(f_out.read())

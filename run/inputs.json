@@ -1,0 +1,34 @@
+{
+    "setup":{
+        "Runfolder":"test",
+        "Geometry_file":"molecule.xyz",
+        "repeats":2,
+        "cores":8,
+        "restart":"NO",
+        "initre":0
+    },
+    "run":{
+        "Geom_flg":1,
+        "Molecule":"Ethylene",
+        "Atoms":6,
+        "States":2,
+        "Temp":0.015834,
+        "Branches":0,
+        "Timestep":10,
+        "Tot_timesteps":2100,
+        "Geom_start":1,
+        "Spin_flip":0
+    },
+    "optimise":{
+        "jobtype":"opt",
+        "exchange":"BHHLYP !50% HF +  50% Becke88 exchange",
+        "basis":"6-31+G*",
+        "unrestricted":"true",
+        "max_scf_cycles":500,
+        "sym_ignore":"true",
+        "scf_algorithm":"diis"
+    }
+
+
+
+}

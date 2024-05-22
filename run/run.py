@@ -68,7 +68,7 @@ if __name__=="__main__":
     #Copies input files
     shutil.copy2("restart.py",EXDIR1)
     shutil.copy2("inputs.json",EXDIR1)
-    shutil.copy2("graph.json",EXDIR1)
+    shutil.copy2("graph.py",EXDIR1)
    
     for i in range(inputs["setup"]["repeats"]):
         os.mkdir(EXDIR1+"/rep-"+str(i+1))
@@ -79,8 +79,8 @@ if __name__=="__main__":
     # subprocess.run(['pyinstaller', 'setup.py', '--onefile'])
     # shutil.copy2("dist/setup",EXDIR1+"/setup/setup")
     shutil.copy2("setup.py",EXDIR1+"/setup/setup.py")
-    subprocess.run(['pyinstaller', 'main.py', '--onefile'])
-    shutil.copy2("dist/main",EXDIR1+"/main")
+    # subprocess.run(['pyinstaller', 'main.py', '--onefile'])
+    # shutil.copy2("dist/main",EXDIR1+"/main")
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
