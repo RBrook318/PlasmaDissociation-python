@@ -68,6 +68,7 @@ if __name__=="__main__":
     #Copies input files
     shutil.copy2("restart.py",EXDIR1)
     shutil.copy2("inputs.json",EXDIR1)
+    shutil.copy2("graph.json",EXDIR1)
    
     for i in range(inputs["setup"]["repeats"]):
         os.mkdir(EXDIR1+"/rep-"+str(i+1))
