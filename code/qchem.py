@@ -1,5 +1,5 @@
 # Qchem.py 15/11/2023
-import subprocess
+
 import os
 import numpy as np 
 import re
