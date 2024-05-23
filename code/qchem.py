@@ -49,48 +49,34 @@ def create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
                         )
         return qc_inp
                       
-    
-    
-    
-
-
-
 def run_qchem(ncpu,file, molecule, n, nstates, spin_flip, Guess=True): 
-
-    def submit_qchem_job(ncpu,file,output):
-        subprocess.run(["qchem", "-save", "-nt", str(ncpu), file, output, "wf"])
-
-    # Prepare f.inp file
+    # Prepare qchem input
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     output = get_output_from_qchem(qc_inp,processors=ncpu)
    
-   
     if "Total job time" in output:
         # Job completed successfully
-        readqchem('f.out', molecule, n, nstates,spin_flip)
+        readqchem(output, molecule, n, nstates,spin_flip)
         # Append f.out content to f.all
-        with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
-            f_all.write(f_out.read())
+        with open("f.all", "a") as f_all:
+            f_all.write(output)
         pass   
     else:
         # Retry with a different setup
         qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'false'})
         output = get_output_from_qchem(qc_inp,processors=ncpu)
         
-
         # Check for the second failure
         if "Total job time" in output:
-            readqchem('f2.out', molecule, n, nstates,spin_flip)
-            with open("f.out", "r") as f_out, open("f.all", "a") as f_all:
-                f_all.write(f_out.read())
+            readqchem(output, molecule, n, nstates,spin_flip)
+            with open("f.all", "a") as f_all:
+                f_all.write(output)
         else:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
            
 
-    
-
-def readqchem(output_file, molecule, natoms, nst,spin_flip):
+def readqchem(output, molecule, natoms, nst,spin_flip):
 
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     ndim = 3 * reduced_natoms
@@ -101,37 +87,37 @@ def readqchem(output_file, molecule, natoms, nst,spin_flip):
         l1t = ' SCF   energy in the final basis set ='
         l2t = ' Gradient of SCF Energy'
     
-    with open(output_file, 'r') as file:
-        f = np.zeros(ndim,dtype = np.float64)
+    output_lines = output.split("\n")
+   
+    f = np.zeros(ndim,dtype = np.float64)
 
-        molecule.update_forces(f)
-        e = np.zeros(nst,dtype = np.float64)
-        C = np.zeros(ndim)
-        l1_found = False
-        l2_found = False
-        found_target = False
-        for line in file:
-            if found_target:
-                # Read the line below the target line
-                data_line = line.strip()
-                match = re.search(r'-?\d+\.\d+', data_line)
-                if match:
-                    e[0] = float(match.group())
-                    # Update the SCF energy in the Molecule object
-                    molecule.update_scf_energy(e)
-
-                else:
-                    print("Number not found in the line.")
-                break
-            if l1t in line:
-                found_target = True
+    molecule.update_forces(f)
+    e = np.zeros(nst,dtype = np.float64)
+    C = np.zeros(ndim)
+    l1_found = False
+    l2_found = False
+    found_target = False
+    for line in output_lines:
+        if found_target:
+            # Read the line below the target line
+            data_line = line.strip()
+            match = re.search(r'-?\d+\.\d+', data_line)
+            if match:
+                e[0] = float(match.group())
+                # Update the SCF energy in the Molecule object
+                molecule.update_scf_energy(e)
+            else:
+                print("Number not found in the line.")
+            break
+        if l1t in line:
+            found_target = True
 
         found_target = False
         lines_read = 0
         skip_counter = 0
         lines_to_read = 4 * (math.ceil(natoms / 6)) - 1
         start_index = 0
-        for line in file:
+        for line in output_lines:
             if found_target and lines_read < lines_to_read:
                 if skip_counter != 3:  # Skip every fourth line
                     data_line = line.strip()
@@ -151,7 +137,7 @@ def readqchem(output_file, molecule, natoms, nst,spin_flip):
                 found_target = True
                 print(line)
                 # Skip the header line
-                next(file)
+                next(output_lines)
 
         f = -f
         f = np.where(f == -0.0, 0.0, f)
