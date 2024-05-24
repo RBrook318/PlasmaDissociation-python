@@ -71,7 +71,6 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     nst = len(molecule.scf_energy)
     ii = 1j  # imaginary unit
 
-   
     electronic_hamiltonian = np.zeros((nst, nst), dtype=np.cdouble)
 
     for n1 in range(nst):
