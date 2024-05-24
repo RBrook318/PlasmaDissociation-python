@@ -1,16 +1,16 @@
 {
     "setup":{
-        "Runfolder":"test",
+        "Runfolder":"TEOS_no_spin2",
         "Geometry_file":"molecule.xyz",
-        "repeats":2,
+        "repeats":400,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":1,
-        "Molecule":"Ethylene",
-        "Atoms":6,
+        "Molecule":"TEOS",
+        "Atoms":33,
         "States":2,
         "Temp":0.015834,
         "Branches":0,

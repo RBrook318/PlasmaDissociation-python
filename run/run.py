@@ -51,6 +51,8 @@ if __name__=="__main__":
 
 
     EXDIR="/nobackup/"+getpass.getuser()+"/scatter"
+    if not os.path.exists(EXDIR):
+        os.mkdir(EXDIR)
     
     if os.path.exists(EXDIR+"/"+inputs["setup"]["Runfolder"]):
         value=input("File already exists do you want to delete it? y/n\n")
@@ -78,14 +80,13 @@ if __name__=="__main__":
     os.chdir('../code')
     subprocess.run(['pyinstaller', 'setup.py', '--onefile'])
     shutil.copy2("dist/setup",EXDIR1+"/setup/setup")
-    # shutil.copy2("setup.py",EXDIR1+"/setup/setup.py")
     subprocess.run(['pyinstaller', 'main.py', '--onefile'])
     shutil.copy2("dist/main",EXDIR1+"/main")
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
     
-    # Makes Job Submission sctipt for iniital setup
+    # Makes Job Submission sctipt for initial setup
     file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
     f=open(file2,"w")
     f.write("#$ -cwd -V \n")
@@ -107,7 +108,7 @@ if __name__=="__main__":
     f.write("./setup")
     f.close()
     command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
-    # subprocess.call(command)
+    subprocess.call(command)
     
    
     file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
@@ -132,7 +133,7 @@ if __name__=="__main__":
     f.write("./../main")
     f.close()
     command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["setup"]["Runfolder"], file1]
-    # subprocess.call(command)
+    subprocess.call(command)
 
     for i in range(inputs["setup"]["initre"]):
         file1="Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+".sh"
