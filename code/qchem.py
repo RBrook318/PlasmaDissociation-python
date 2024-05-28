@@ -56,17 +56,17 @@ def create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
 def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True): 
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     try:
-        output = get_output_from_qchem(qc_inp,processors=ncpu,delete_scratch=True)
+        output = get_output_from_qchem(qc_inp,processors=ncpu)
     except:
         print('Using DIIS_GDM algorithm')
         # Retry with a different setup
-        qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'false'})
+        qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'sad'})
         try:
             output = get_output_from_qchem(qc_inp,processors=ncpu)
-        except  :
+        except:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
-            return
+            exit()
     # Job completed successfully
     readqchem(output, molecule, n, nstates,spin_flip)
     # Append f.out content to f.all
@@ -81,19 +81,20 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
         enum = output.find('Total energy for state  1:')
         scf_erg = float(output[enum: enum+100].split()[5])
         molecule.scf_energy[0]=scf_erg
+        # molecule.scf_energy[1]=scf_erg
         l2t = ' Gradient of the state energy (including CIS Excitation Energy)'
     else:
         enum = output.find('Total energy in the final basis set')
         scf_erg = float(output[enum: enum+100].split()[8])
         molecule.scf_energy[0]=scf_erg
+        # molecule.scf_energy[1]=scf_erg
         l2t = ' Gradient of SCF Energy'
     
     output_lines = output.split("\n")
     enum = output.find(l2t)
     output_lines = output[enum:-1].split("\n")
-    lines_to_read = 4 * (math.ceil(natoms / 6)) +1
+    lines_to_read = 4 * (math.ceil(reduced_natoms / 6)) +1
     forces = output_lines[1:lines_to_read]
-
     forces = [line.split() for line in forces]
     f = np.zeros(ndim,dtype = np.float64)
     strt = 0
@@ -102,7 +103,6 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
         for j in range(3):
             f[strt:strt+num] = forces[i*4+j+1][1:]
             strt = strt + num
-
     f = -f
     f = np.where(f == -0.0, 0.0, f)
     # Update the forces in the Molecule object
