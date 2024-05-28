@@ -1,6 +1,6 @@
 {
     "setup":{
-        "Runfolder":"TEOS_no_spin2",
+        "Runfolder":"TEOS_spinflip2",
         "Geometry_file":"molecule.xyz",
         "repeats":400,
         "cores":8,
@@ -17,7 +17,7 @@
         "Timestep":10,
         "Tot_timesteps":2100,
         "Geom_start":1,
-        "Spin_flip":0
+        "Spin_flip":1
     },
     "optimise":{
         "jobtype":"opt",
