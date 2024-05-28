@@ -67,7 +67,6 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
             return
-
     # Job completed successfully
     readqchem(output, molecule, n, nstates,spin_flip)
     # Append f.out content to f.all
@@ -88,21 +87,25 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
         scf_erg = float(output[enum: enum+100].split()[8])
         molecule.scf_energy[0]=scf_erg
         l2t = ' Gradient of SCF Energy'
-    print(molecule.scf_energy)
+    
     output_lines = output.split("\n")
     enum = output.find(l2t)
     output_lines = output[enum:-1].split("\n")
     lines_to_read = 4 * (math.ceil(natoms / 6)) +1
-    forces = output_lines[2:lines_to_read]
+    forces = output_lines[1:lines_to_read]
+
     forces = [line.split() for line in forces]
     f = np.zeros(ndim,dtype = np.float64)
     strt = 0
-    for i in range(len(forces)):
-        f[strt:strt+reduced_natoms]=(forces[i][1:])
-        strt=strt+(reduced_natoms)
+    for i in range(int(len(forces)/4)):
+        num=len(forces[i*4])
+        for j in range(3):
+            f[strt:strt+num] = forces[i*4+j+1][1:]
+            strt = strt + num
 
     f = -f
     f = np.where(f == -0.0, 0.0, f)
     # Update the forces in the Molecule object
     molecule.update_forces(f)
+    
    
