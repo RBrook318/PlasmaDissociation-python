@@ -1,21 +1,21 @@
 {
     "setup":{
-        "Runfolder":"TEOS_no_spin2",
+        "Runfolder":"APITEST",
         "Geometry_file":"molecule.xyz",
-        "repeats":400,
+        "repeats":1,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":1,
-        "Molecule":"TEOS",
-        "Atoms":33,
+        "Molecule":"Methane",
+        "Atoms":5,
         "States":2,
         "Temp":0.015834,
         "Branches":0,
         "Timestep":10,
-        "Tot_timesteps":2100,
+        "Tot_timesteps":100,
         "Geom_start":1,
         "Spin_flip":0
     },

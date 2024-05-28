@@ -61,11 +61,13 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     Ay = Ay.reshape(n, nmod, order = 'F')
     Az = Az.reshape(n, nmod, order = 'F')
     rn = np.random.randn(nmod, mom_num)  # Use np.random.randn for standard normal distribution
+    m=m*1822.8885300626
     # Initialize arrays for random
     Meff = np.zeros(nmod)
     rv = np.zeros((nmod, mom_num))
     for i in range(nmod):
         for j in range(n):
+            print(m[j])
             Meff[i] = Meff[i]+np.sum(((Ax[j, i]**2) + (Ay[j, i]**2) + (Az[j, i]**2)) * m[j])
         rv[i, :] = rn[i, :] * np.sqrt(2 * T / Meff[i])
     # Calculate the velocity by applying it through the tranformation matrix of normal modes.
@@ -123,7 +125,7 @@ if __name__ == "__main__":
         f.write(opt_geoms)
 
     # Extract masses of atoms   
-    masses=(qc_inp.molecule.get_atomic_numbers())
+    masses=(qc_inp.molecule.get_atomic_masses())
     Px, Py, Pz = create_geom(inputs["run"]["Atoms"],num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
     # Extract atom symbols
     atoms=qc_inp.molecule.get_symbols()
