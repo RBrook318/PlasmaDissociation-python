@@ -40,7 +40,7 @@ if __name__ == "__main__":
             restart='YES'
     else: 
          restart='NO'
-  
+
 if(restart == 'NO'):    
     molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
     molecule2 = init.create_molecule(None, n,nstates,spin_flip)
@@ -55,7 +55,7 @@ elif(restart == 'YES'):
         molecule1 = Molecule.from_json(filename)
         startstep = molecule1.timestep / increment
         Guess = False
-        qc.run_qchem(ncpu, molecule1,n,nstates,spin_flip, Guess=Guess)
+        qc.run_qchem(ncpu, molecule1,n,nstates,spin_flip, Guess=False)
     else:
         molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
         molecule2 = init.create_molecule(None, n,nstates,spin_flip)

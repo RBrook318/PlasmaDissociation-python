@@ -75,7 +75,7 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
 
     for n1 in range(nst):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
-        print(molecule.scf_energy[n1], "+ 77.67785291 = ", electronic_hamiltonian[n1,n1])
+
 
         for n2 in range(n1 + 1, nst):
             electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling)
@@ -270,9 +270,6 @@ def fragements(molecule,spin_flip):
                     molecule.multiplicity = 2
             molecule.dissociation_flags[i - 1] = 'YES'
             dissociated = 1
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
             j -= 1
         j += 1
 

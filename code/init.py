@@ -19,6 +19,7 @@ class Molecule:
         self.timestep = timestep
         self.multiplicity = multiplicity
         self.dissociation_flags = dissociation_flags or ["NO"] * len(symbols)
+        self.elecinfo = None
 
     def update_symbols(self, new_symbols):
         self.symbols = new_symbols
@@ -46,6 +47,9 @@ class Molecule:
     
     def update_dissociation_flags(self, new_flags):
         self.dissociation_flags = new_flags
+
+    def update_elecinfo(self, new_elecinfo):
+        self.elecinfo = new_elecinfo
 
     def print_info(self):
         print("Symbols:", self.symbols)

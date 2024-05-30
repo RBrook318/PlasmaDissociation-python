@@ -15,12 +15,13 @@ def file_contains_string(file_path, search_string):
                 return True
     return False
 
-def create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
+def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
     
     # Filter indices based on dissociation flag
     active_indices = [i for i, flag in enumerate(molecule.dissociation_flags) if flag == 'NO']
     active_coords = [molecule.coordinates[i] for i in active_indices]
     active_symbols = [molecule.symbols[i] for i in active_indices]
+    coefficients = molecule.elecinfo
     molecule = Structure(coordinates=active_coords, symbols=active_symbols, multiplicity=molecule.multiplicity)
    
     if spin_flip==0:
@@ -49,14 +50,15 @@ def create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True):
                         cis_state_deriv=1
                         )
     if Guess:
-       qc_inp.update_input({'scf_guess':'Read'})  
+       qc_inp.update_input({'scf_guess':coefficients})  
  
     return qc_inp
                       
 def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True): 
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     try:
-        output = get_output_from_qchem(qc_inp,processors=ncpu)
+        output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
+        molecule.update_elecinfo(ee['coefficients'])
     except:
         print('Using DIIS_GDM algorithm')
         # Retry with a different setup
@@ -73,6 +75,7 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
     with open("f.all", "a") as f_all:
         f_all.write(output)
     return 
+
 
 def readqchem(output, molecule, natoms, nst,spin_flip):
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
