@@ -148,12 +148,19 @@ def create_empty_molecule(natoms,nst,spin_flip):
     amplitudes[0] = 1
     return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity)
 
-def initialize_structure(reps,natoms,nst,spin_flip):
+def initialize_structure(nst,spin_flip):
     file_path = f"Geometry"  # Updated file path with reps variable
 
     with open(file_path, 'r') as file:
         lines = file.readlines()
+    natoms = 0
+    for i, line in enumerate(lines):
+        if line.strip().lower() == 'momentum':
+            natoms = i
+            break
 
+    if natoms == 0:
+        raise ValueError("The file does not contain a 'momentum' line.")
     # Read geometry coordinates
     geometry_lines = lines[0:natoms]
     symbols = [line.split()[0] for line in geometry_lines]

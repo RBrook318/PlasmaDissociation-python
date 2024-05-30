@@ -75,7 +75,7 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
 
     for n1 in range(nst):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
-
+        print(molecule.scf_energy[n1], "+ 77.67785291 = ", electronic_hamiltonian[n1,n1])
 
         for n2 in range(n1 + 1, nst):
             electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling)
@@ -143,7 +143,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     for i in range(0, natoms):
         mass[i] = Mau * int(ChemFormula(shrunk_molecule.symbols[i]).formula_weight)
         velocities[i,:] = shrunk_molecule.momenta[i,:]/mass[i]
-
+    
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
 
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), amplitudes.reshape(-1, 1))
@@ -161,22 +161,12 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule.update_timestep(shrunk_molecule.timestep+increment)
   
     Force_vector = Force_vector.reshape(-1, 3) 
-    # print('Coords: ', shrunk_molecule.coordinates, "\n")
-    # print("Momentum: ", shrunk_molecule.momenta, "\n")
-    # print("Velocities: ", velocities, "\n")
-    # print("Force vector: ", Force_vector, "\n")
     for i in range(natoms):
         shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/mass[i]
-        # print("force:", Force_vector[i,:])
-        # print("Velocities: ", increment*velocities[i,:] )
-        # print("mass: ", mass[i])
-        # print("Force/mass: ", Force_vector[i,:]/mass[i])
-        # print("Increment*Force/mass: ", ((increment**2)/2)*Force_vector[i,:]/mass[i])
         shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + increment*Force_vector[i,:]
 
     restore_molecule(molecule2, shrunk_molecule, shrunk_index)
 
-    
     return molecule2
 
 def prop_2(molecule1, molecule2, natoms, nst, increment):

@@ -15,7 +15,6 @@ if __name__ == "__main__":
     # Check basic arguements
     reps=inputs["setup"]["repeats"]
     ncpu=inputs["setup"]["cores"]
-    n=inputs["run"]["Atoms"]
     nstates=inputs["run"]["States"]
     nbranch=inputs["run"]["Branches"]
     increment=inputs["run"]["Timestep"]
@@ -42,23 +41,26 @@ if __name__ == "__main__":
          restart='NO'
 
 if(restart == 'NO'):    
-    molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
-    molecule2 = init.create_molecule(None, n,nstates,spin_flip)
+    molecule1 = init.initialize_structure(nstates,spin_flip)
+    n = len(molecule1.symbols)
+    molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
     qc.run_qchem(ncpu, molecule1,n, nstates,spin_flip,Guess=False)
     out.output_molecule(molecule1)
     startstep = 1
     Guess = True
 elif(restart == 'YES'):
-    molecule2 = init.create_molecule(None,n,nstates,spin_flip)
     filename = 'output/molecule.json'
     if os.path.exists(filename):
         molecule1 = Molecule.from_json(filename)
+        n = len(molecule1.symbols)
+        molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
         startstep = molecule1.timestep / increment
         Guess = False
         qc.run_qchem(ncpu, molecule1,n,nstates,spin_flip, Guess=False)
     else:
-        molecule1 = init.create_molecule(reps, n,nstates,spin_flip)
-        molecule2 = init.create_molecule(None, n,nstates,spin_flip)
+        molecule1 = init.initialize_structure(nstates,spin_flip)
+        n = len(molecule1.symbols)
+        molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
         qc.run_qchem(ncpu, molecule1,n,nstates,spin_flip, Guess=False)
         out.output_molecule(molecule1)
         startstep = 1

@@ -54,7 +54,7 @@ def bondarr(molecule):
     return
 
 def create_geom(n,nmod,T,modes,m,mom_num):
-    Ax = modes[:, 0]
+    Ax = modes[:,0]
     Ay = modes[:,1]
     Az = modes[:,2]
     Ax = Ax.reshape(n, nmod, order = 'F')
@@ -62,6 +62,8 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     Az = Az.reshape(n, nmod, order = 'F')
     rn = np.random.randn(nmod, mom_num)  # Use np.random.randn for standard normal distribution
     m=m*1822.8885300626
+    T=T*0.0000031668
+    print(T)
     # Initialize arrays for random
     Meff = np.zeros(nmod)
     rv = np.zeros((nmod, mom_num))
@@ -90,7 +92,7 @@ if __name__ == "__main__":
     # Load molecule coordinates from pubchem
     molecule = get_geometry_from_pubchem(inputs["run"]["Molecule"])
     # Write bond breaking file to results folder
-   
+ 
     # Optimise the molecule
     qc_inp = QchemInput(molecule,
                         jobtype='opt',
@@ -118,7 +120,8 @@ if __name__ == "__main__":
     pasrser_output = basic_frequencies(output)
     num_modes = len(pasrser_output['modes'])
     # Need to check this works correctly 
-    modes=organise_modes(pasrser_output['modes'],inputs["run"]["Atoms"])
+    natoms = int((num_modes+6)/3)
+    modes=organise_modes(pasrser_output['modes'],natoms)
     # Convert Geometries to bohr
     opt_geoms=convert_to_bohr(opt_geoms)
     with open(inputs["run"]["Molecule"]+'.xyz','w') as f:
@@ -126,7 +129,7 @@ if __name__ == "__main__":
 
     # Extract masses of atoms   
     masses=(qc_inp.molecule.get_atomic_masses())
-    Px, Py, Pz = create_geom(inputs["run"]["Atoms"],num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
+    Px, Py, Pz = create_geom(natoms,num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
     # Extract atom symbols
     atoms=qc_inp.molecule.get_symbols()
     # Write momenta files to repetition folder
@@ -135,7 +138,7 @@ if __name__ == "__main__":
             file.write(opt_geoms)
             file.write("momentum\n")
             # Write Px, Py, and Pz for each atom on the same line
-            for atom in range(inputs["run"]["Atoms"]):
+            for atom in range(natoms):
                 # Access the Px, Py, and Pz values using the corresponding indices
                 px_value = Px[atom, j]
                 py_value = Py[atom, j]
