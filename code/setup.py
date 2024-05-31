@@ -103,7 +103,7 @@ if __name__ == "__main__":
                         sym_ignore=True,
                         scf_algorithm='diis')
     
-    output = get_output_from_qchem(qc_inp,processors=2)
+    output = get_output_from_qchem(qc_inp,processors=inputs['setup']['cores'])
     with open('optimisation.out', 'w') as f:
         f.write(output)
     pasrser_output = basic_optimization(output)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
                         jobtype='FREQ',
                         exchange='BHHLYP',
                         basis='6-31+G*')
-    output = get_output_from_qchem(qc_inp,processors=2)
+    output = get_output_from_qchem(qc_inp,inputs['setup']['cores'])
     with open('modes.out', 'w') as f:
         f.write(output)
     pasrser_output = basic_frequencies(output)

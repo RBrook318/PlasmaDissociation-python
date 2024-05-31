@@ -198,4 +198,4 @@ def create_molecule(reps, natoms, nst,spin_flip):
         return create_empty_molecule(natoms, nst, spin_flip)
     else:
         # Otherwise, create an empty molecule
-        return initialize_structure(reps,natoms,nst,spin_flip)
+        return initialize_structure(nst,spin_flip)
