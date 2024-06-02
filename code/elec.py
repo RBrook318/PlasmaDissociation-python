@@ -6,17 +6,16 @@ import re
 import math
 from pyqchem import QchemInput, Structure
 from pyqchem import get_output_from_qchem
-from pyscf import gto, scf, dft, grad
-
-np.set_printoptions(precision =30)
+from pyscf import gto, scf, dft, grad, lib
+import time
 
 
 def run_elec_structure(molecule, ncpu,n,nstates,spin_flip, method,Guess):
     if method == 'QChem':
         run_qchem(ncpu, molecule,n, nstates,spin_flip,Guess=Guess)
     elif method == 'PySCF': 
-        run_pySCF(molecule,ncpu)
-
+        run_pySCF(molecule,ncpu,Guess)
+        
 # -------------------------------------------------------------------
 # Electronic structure via QChem.
         
@@ -76,7 +75,7 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
         # Retry with a different setup
         qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'sad'})
         try:
-            output = get_output_from_qchem(qc_inp,processors=ncpu)
+            output, ee = get_output_from_qchem(qc_inp,processors=ncpu)
         except:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
@@ -113,11 +112,12 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
     forces = [line.split() for line in forces]
     f = np.zeros(ndim,dtype = np.float64)
     strt = 0
-    for i in range(int(len(forces)/4)):
-        num=len(forces[i*4])
-        for j in range(3):
-            f[strt:strt+num] = forces[i*4+j+1][1:]
-            strt = strt + num
+    for i in range(reduced_natoms):
+        x = float(forces[1 + 4 * (i // 6)][i % 6 + 1])
+        y = float(forces[2 + 4 * (i // 6)][i % 6 + 1])
+        z = float(forces[3 + 4 * (i // 6)][i % 6 + 1])
+        f[strt:strt+3] = [x, y, z]
+        strt += 3
     f = -f
     f = np.where(f == -0.0, 0.0, f)
     # Update the forces in the Molecule object
@@ -126,8 +126,6 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
 # -------------------------------------------------------------------------
 # PySCF section 
 
-import init 
-from pyscf import gto, scf, dft, grad
 
 def create_pyscf_molecule(molecule):
     # Extract molecule information
@@ -149,7 +147,8 @@ def create_pyscf_molecule(molecule):
 
     return mol
 
-def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None):
+def run_pyscf_calculation(mol,ncpu, scf_algorithm, exchange_functional=None,prev_mf=None):
+    timescf1= time.time()
     if exchange_functional:
         if mol.spin == 0:
             mf = dft.RKS(mol)
@@ -169,10 +168,15 @@ def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None):
             raise ValueError(f"Unknown SCF algorithm: {scf_algorithm}")
 
     mf.conv_tol = 1e-10
-    mf.max_cycle = 500
-    
+    # mf.max_cycle = 500
+    if prev_mf is not None:
+        mf.mo_coeff = prev_mf.mo_coeff
+        mf.mo_occ = prev_mf.mo_occ
+
     energy = mf.kernel()
-    
+    timescf2 = time.time()
+    print('SCF energy time:', timescf2-timescf1)
+    timegrad1 = time.time()
     # Calculate forces (gradients)
     if mol.spin == 0:
         if exchange_functional:
@@ -186,16 +190,26 @@ def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None):
             grad_calc = grad.UHF(mf)
     
     forces = grad_calc.kernel()
-    
-    return energy, forces
+    timegrad2= time.time()
+    print("Grad part: ", timegrad2-timegrad1)
+    return energy, forces, mf 
 
-def run_pySCF(molecule, npcu, exchange_functional='BHHLYP'):
+def run_pySCF(molecule, ncpu,Guess=True,exchange_functional='BHHLYP'):
     e = molecule.scf_energy
-
     mol = create_pyscf_molecule(molecule)
-    energy, forces = run_pyscf_calculation(mol, 'DIIS', exchange_functional)
+    guess = False
+    time1 = time.time()
+    if Guess ==False:
+        energy, forces,mf = run_pyscf_calculation(mol,ncpu, 'DIIS', exchange_functional)
+    else:
+        energy, forces,mf = run_pyscf_calculation(mol,ncpu, 'DIIS', exchange_functional)
+    time2=time.time()
+    print('pyscf job: ',  time2-time1)
     e[1] = energy
     molecule.update_scf_energy(e)
-    molecule.update_forces(-forces)
-    print(molecule.forces)
+    forces = -forces
+    forces = forces.reshape(-1)
+    molecule.update_forces(forces)
+    molecule.update_elecinfo(mf)
+
 

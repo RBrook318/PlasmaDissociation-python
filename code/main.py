@@ -8,7 +8,9 @@ import output as out
 import result
 import json
 import pyscf
+import time 
 
+start_time = time.time()
 if __name__ == "__main__":
     # Load inputs
     with open('../inputs.json') as f:
@@ -79,3 +81,5 @@ for i in range(int(startstep), endstep+1):
         Guess = False
     
 result.process_results()
+end_time=time.time()
+print("Time taken to run: ", end_time-start_time)

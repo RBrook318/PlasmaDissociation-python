@@ -222,7 +222,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
         A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, increment / 10), Amplitudes_temp)
         Amplitudes_temp = A1
         Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, nst)
-        Force_vector += Force_vector_temp / 10.
+        Force_vector += Force_vector_temp / 10
 
     A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), Amplitudes_temp)
     Force_vector = Force_vector.reshape(-1, 3)
