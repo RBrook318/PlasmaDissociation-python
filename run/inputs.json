@@ -1,8 +1,8 @@
 {
     "setup":{
-        "Runfolder":"AAPYQCHEMTEST",
+        "Runfolder":"AAPySCF",
         "repeats":1,
-        "cores":8,
+        "cores":16,
         "restart":"NO",
         "initre":0
     },
@@ -16,7 +16,8 @@
         "Tot_timesteps":5,
         "Geom_start":1,
         "Spin_flip":0,
-        "method": "QChem"
+        "method": "PySCF",
+        "GPU": 0
     }
 
 }

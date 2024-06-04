@@ -49,10 +49,15 @@ if __name__=="__main__":
         else:
             HPCFLG=0
 
-
-    EXDIR="/nobackup/"+getpass.getuser()
-    if not os.path.exists(EXDIR):
-        os.mkdir(EXDIR)
+    if(HPCFLG==0):
+        EXDIR="../EXEC"
+        if not os.path.exists("../EXEC"):
+            os.mkdir("../EXEC")
+            
+    else:
+        EXDIR="/nobackup/"+getpass.getuser()
+        if not os.path.exists(EXDIR):
+            os.mkdir(EXDIR)
     
     if os.path.exists(EXDIR+"/"+inputs["setup"]["Runfolder"]):
         value=input("File already exists do you want to delete it? y/n\n")
@@ -83,75 +88,48 @@ if __name__=="__main__":
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
-    
-    # Makes Job Submission sctipt for initial setup
-    if(inputs["run"]["Geom_flg"] ==1):
-        file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
-        f=open(file2,"w")
-        f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=1G,h_rt=01:00:00 \n")
-        f.write("#$ -N Setup_"+inputs["setup"]["Runfolder"]+" \n")
-        f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-        if(inputs["run"]["method"]=="QChem"):
-            f.write("module load  test qchem \n")
-            f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
-            f.write('qchemlocal=$TMPDIR/qchemlocal\n')
-            f.write('export QCHEM_HOME="$qchemlocal"\n')
-            f.write('export QC="$qchemlocal"\n')
-            f.write('export QCAUX="$QC/qcaux"\n')
-            f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
-            f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
-            f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
-        f.write("cd "+EXDIR1+"/setup \n")
-        f.write("python ./../setup.py")
-        f.close()
-        if(inputs["setup"]["cores"]!=1):
-            os.environ["OMP_NUM_THREADS"]=str(inputs["setup"]["cores"])
-        command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
-        subprocess.call(command)
-    
-   
-    file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
-    f=open(file1,"w")
-    f.write("#$ -cwd -V \n")
-    f.write("#$ -l h_vmem=1G,h_rt=00:20:00 \n")
-    f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
-    f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-    f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
-    if(inputs["run"]["method"]=="QChem"):
-        f.write("module load test qchem \n")
-        f.write("module load qchem \n")
-        f.write("mkdir $TMPDIR/qchemlocal\n")
-        f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz -C $TMPDIR/qchemlocal\n')
-        f.write('qchemlocal=$TMPDIR/qchemlocal\n')
-        f.write('export QCHEM_HOME="$qchemlocal"\n')
-        f.write('export QC="$qchemlocal"\n')
-        f.write('export QCAUX="$QC/qcaux"\n')
-        f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
-        f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
-        f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-        f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
-    f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
-    f.write("python ./../code/main.py")
-    f.close()
-    command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["setup"]["Runfolder"], file1]
-    subprocess.call(command)
-
-    for i in range(inputs["setup"]["initre"]):
-        file1="Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+".sh"
+    if HPCFLG == 1:
+        # Makes Job Submission sctipt for initial setup
+        if(inputs["run"]["Geom_flg"] ==1):
+            file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
+            f=open(file2,"w")
+            f.write("#$ -cwd -V \n")
+            f.write("#$ -l h_vmem=1G,h_rt=01:00:00 \n")
+            f.write("#$ -N Setup_"+inputs["setup"]["Runfolder"]+" \n")
+            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            if(inputs["run"]["method"]=="QChem"):
+                f.write("module load  test qchem \n")
+                f.write("mkdir $TMPDIR/qchemlocal\n")
+                f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
+                f.write('qchemlocal=$TMPDIR/qchemlocal\n')
+                f.write('export QCHEM_HOME="$qchemlocal"\n')
+                f.write('export QC="$qchemlocal"\n')
+                f.write('export QCAUX="$QC/qcaux"\n')
+                f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
+                f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
+                f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
+                f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
+            f.write("cd "+EXDIR1+"/setup \n")
+            f.write("python ./../setup.py")
+            f.close()
+            command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
+            subprocess.call(command)
+        
+        
+        file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=2G,h_rt=48:00:00 \n")
-        f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+" \n")
+        f.write("#$ -l h_vmem=4G,h_rt=00:5:00 \n")
+        f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
         f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
-        f.write("module load qchem \n")
-        f.write("mkdir $TMPDIR/qchemlocal\n")
+        if(inputs["run"]["GPU"]==1):
+            f.write('#$ -l coproc_p100=1 \n')
         if(inputs["run"]["method"]=="QChem"):
+            f.write("module load test qchem \n")
+            f.write("module load qchem \n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
+            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz -C $TMPDIR/qchemlocal\n')
             f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
@@ -161,10 +139,42 @@ if __name__=="__main__":
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
             f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
         f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
-        f.write("./../main")
+        f.write("python ./../code/main.py")
         f.close()
-        command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+2), '-hold_jid', 'Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+1), file1]
+        command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["setup"]["Runfolder"], file1]
         subprocess.call(command)
+
+        for i in range(inputs["setup"]["initre"]):
+            file1="Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+".sh"
+            f=open(file1,"w")
+            f.write("#$ -cwd -V \n")
+            f.write("#$ -l h_vmem=2G,h_rt=48:00:00 \n")
+            f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+" \n")
+            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
+            f.write("module load qchem \n")
+            f.write("mkdir $TMPDIR/qchemlocal\n")
+            if(inputs["run"]["method"]=="QChem"):
+                f.write("mkdir $TMPDIR/qchemlocal\n")
+                f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
+                f.write('qchemlocal=$TMPDIR/qchemlocal\n')
+                f.write('export QCHEM_HOME="$qchemlocal"\n')
+                f.write('export QC="$qchemlocal"\n')
+                f.write('export QCAUX="$QC/qcaux"\n')
+                f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
+                f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
+                f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
+                f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
+            f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
+            f.write("./../main")
+            f.close()
+            command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+2), '-hold_jid', 'Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+1), file1]
+            subprocess.call(command)
+    else: 
+        for i in range(inputs["setup"]["repeats"]):
+            os.chdir(EXDIR1+"/rep-"+str(i+1))
+            EXDIR1=os.getcwd()
+            subprocess.call(["python", "../code/main.py"])
 
        
         

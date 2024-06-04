@@ -7,8 +7,8 @@ import prop
 import output as out
 import result
 import json
-import pyscf
 import time 
+import qchem as qc
 
 start_time = time.time()
 if __name__ == "__main__":
@@ -70,7 +70,7 @@ elif(restart == 'YES'):
         Guess = True
 for i in range(int(startstep), endstep+1):
     molecule2 = prop.prop_1(molecule1, molecule2, n, nstates, increment)
-    elec.run_elec_structure(molecule2, ncpu,n,nstates,spin_flip,method,Guess=True)
+    elec.run_elec_structure(molecule2, ncpu,n,nstates,spin_flip,method,Guess=Guess)
     molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
     molecule1, dissociated = prop.fragements(molecule1,spin_flip)
     molecule1 = prop.prop_diss(molecule1,increment)

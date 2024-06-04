@@ -2,12 +2,14 @@
 
 import os
 import numpy as np 
-import re
 import math
 from pyqchem import QchemInput, Structure
 from pyqchem import get_output_from_qchem
+
 np.set_printoptions(precision =30)
 
+# Electronic structure via QChem.
+        
 def file_contains_string(file_path, search_string):
     with open(file_path, "r") as file:
         for line in file:
@@ -57,14 +59,15 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
 def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True): 
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     try:
-        output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
+        print(ncpu)
+        output, ee = get_output_from_qchem(qc_inp,processors=8,return_electronic_structure=True)
         molecule.update_elecinfo(ee['coefficients'])
     except:
         print('Using DIIS_GDM algorithm')
         # Retry with a different setup
         qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'sad'})
         try:
-            output = get_output_from_qchem(qc_inp,processors=ncpu)
+            output, ee = get_output_from_qchem(qc_inp,processors=8)
         except:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
@@ -101,14 +104,17 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
     forces = [line.split() for line in forces]
     f = np.zeros(ndim,dtype = np.float64)
     strt = 0
-    for i in range(int(len(forces)/4)):
-        num=len(forces[i*4])
-        for j in range(3):
-            f[strt:strt+num] = forces[i*4+j+1][1:]
-            strt = strt + num
+    for i in range(reduced_natoms):
+        x = float(forces[1 + 4 * (i // 6)][i % 6 + 1])
+        y = float(forces[2 + 4 * (i // 6)][i % 6 + 1])
+        z = float(forces[3 + 4 * (i // 6)][i % 6 + 1])
+        f[strt:strt+3] = [x, y, z]
+        strt += 3
     f = -f
     f = np.where(f == -0.0, 0.0, f)
     # Update the forces in the Molecule object
     molecule.update_forces(f)
     
-   
+# -------------------------------------------------------------------------
+
+
