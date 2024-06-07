@@ -14,5 +14,6 @@ def run_elec_structure(molecule, ncpu,n,nstates,spin_flip, method,Guess):
     elif method == 'GPUPySCF':
         import elec_pyscf as pyscf
         pyscf.run_pySCF(molecule,Guess,use_gpu=True)
+    return molecule
         
 # -------------------------------------------------------------------

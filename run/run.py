@@ -81,10 +81,11 @@ if __name__=="__main__":
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/tmp")
         if(inputs["run"]["Geom_flg"] ==0):
             shutil.copy2("../"+inputs["run"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["run"]["Geom_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
-    shutil.copytree("../code", EXDIR1+'/code')
+    if HPCFLG==1:
+            shutil.copytree("../code", EXDIR1+'/code')
     if(inputs["run"]["Geom_flg"] ==0):
         shutil.copy2("../"+inputs["run"]["Molecule"]+"/bondarr.txt",EXDIR1+"/results")
-    os.chdir('../code')
+
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
@@ -174,7 +175,7 @@ if __name__=="__main__":
         for i in range(inputs["setup"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
             EXDIR1=os.getcwd()
-            subprocess.call(["python", "../code/main.py"])
+            subprocess.call(["python", "../../../code/setup.py"])
 
        
         

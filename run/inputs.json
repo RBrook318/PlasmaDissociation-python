@@ -1,6 +1,6 @@
 {
     "setup":{
-        "Runfolder":"AAPySCF",
+        "Runfolder":"Hometest",
         "repeats":1,
         "cores":16,
         "restart":"NO",

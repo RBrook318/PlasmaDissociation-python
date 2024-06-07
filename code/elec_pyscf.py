@@ -1,6 +1,7 @@
 # PySCF section 
 import time
 from pyscf import gto, scf, dft, grad, lib
+from gpu4pyscf.dft import rks
 
 def create_pyscf_molecule(molecule):
     # Extract molecule information
@@ -22,7 +23,7 @@ def create_pyscf_molecule(molecule):
 
     return mol
 
-def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None,prev_mf=None):
+def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None,prev_mf=None,use_gpu =False):
     timescf1= time.time()
     print(lib.num_threads())
     if exchange_functional:
@@ -48,29 +49,32 @@ def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None,prev_mf=N
     if prev_mf is not None:
         mf.mo_coeff = prev_mf.mo_coeff
         mf.mo_occ = prev_mf.mo_occ
+    if use_gpu:
+        mf = rks.RKS(mol).to_gpu()
+        mf.xc = '0.5*HF + 0.5*B88,LYP'
+        mf = rks.RKS(mol).run()
+        gobj = mf.nuc_grad_method().to_gpu()
+        forces = gobj.kernel()
+        energy = mf.to_gpu().kernel()  
+    else: 
+        energy = mf.kernel()
+        # Calculate forces (gradients)
+        if mol.spin == 0:
+            if exchange_functional:
+                grad_calc = grad.RKS(mf)
+            else:
+                grad_calc = grad.RHF(mf)
+        else:
+            if exchange_functional:
+                grad_calc = grad.UKS(mf)
+            else:
+                grad_calc = grad.UHF(mf)
+        
+        forces = grad_calc.kernel()
 
-    energy = mf.kernel()
-    timescf2 = time.time()
-    print('SCF energy time:', timescf2-timescf1)
-    timegrad1 = time.time()
-    # Calculate forces (gradients)
-    if mol.spin == 0:
-        if exchange_functional:
-            grad_calc = grad.RKS(mf)
-        else:
-            grad_calc = grad.RHF(mf)
-    else:
-        if exchange_functional:
-            grad_calc = grad.UKS(mf)
-        else:
-            grad_calc = grad.UHF(mf)
-    
-    forces = grad_calc.kernel()
-    timegrad2= time.time()
-    print("Grad part: ", timegrad2-timegrad1)
     return energy, forces, mf 
 
-def run_pySCF(molecule,Guess=True,exchange_functional='BHHLYP'):
+def run_pySCF(molecule,Guess=True,exchange_functional='BHHLYP',use_gpu = False):
     e = molecule.scf_energy
     mol = create_pyscf_molecule(molecule)
     guess = False

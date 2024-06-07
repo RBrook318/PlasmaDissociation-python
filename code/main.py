@@ -47,7 +47,7 @@ if(restart == 'NO'):
     molecule1 = init.initialize_structure(nstates,spin_flip)
     n = len(molecule1.symbols)
     molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
-    elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip,method, Guess=False)
+    molecule1 = elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip,method, Guess=False)
     out.output_molecule(molecule1)
     startstep = 1
     Guess = True
@@ -59,18 +59,20 @@ elif(restart == 'YES'):
         molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
         startstep = molecule1.timestep / increment
         Guess = False
-        elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
+        molecule1 =elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
     else:
         molecule1 = init.initialize_structure(nstates,spin_flip)
         n = len(molecule1.symbols)
         molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
-        elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
+        molecule1 = elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
         out.output_molecule(molecule1)
         startstep = 1
         Guess = True
 for i in range(int(startstep), endstep+1):
     molecule2 = prop.prop_1(molecule1, molecule2, n, nstates, increment)
-    elec.run_elec_structure(molecule2, ncpu,n,nstates,spin_flip,method,Guess=Guess)
+    molecule2 = elec.run_elec_structure(molecule2, ncpu,n,nstates,spin_flip,method,Guess=Guess)
+    molecule1.elecinfo = molecule2.elecinfo
+    
     molecule1 = prop.prop_2(molecule1, molecule2, n, nstates, increment)
     molecule1, dissociated = prop.fragements(molecule1,spin_flip)
     molecule1 = prop.prop_diss(molecule1,increment)
@@ -79,7 +81,6 @@ for i in range(int(startstep), endstep+1):
         Guess = True
     else:
         Guess = False
-    
 result.process_results()
 end_time=time.time()
 print("Time taken to run: ", end_time-start_time)

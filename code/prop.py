@@ -75,7 +75,6 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
 
     for n1 in range(nst):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
-        print(molecule.scf_energy[n1], "+ 77.67785291 = ", electronic_hamiltonian[n1,n1])
 
         for n2 in range(n1 + 1, nst):
             electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling)
@@ -236,6 +235,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule1.update_amplitudes(A1)
     shrunk_molecule1.update_timestep(shrunk_molecule2.timestep)
     restore_molecule(molecule1,shrunk_molecule1, shrunk_index)
+    
 
     return molecule1
 

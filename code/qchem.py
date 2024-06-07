@@ -25,9 +25,10 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
     active_symbols = [molecule.symbols[i] for i in active_indices]
     coefficients = molecule.elecinfo
     molecule = Structure(coordinates=active_coords, symbols=active_symbols, multiplicity=molecule.multiplicity)
-   
     if spin_flip==0:
-        qc_inp=QchemInput(molecule,
+        if Guess:             
+            qc_inp=QchemInput(molecule,
+                        scf_guess = coefficients,
                         jobtype='force',
                         exchange='BHHLYP',
                         basis='6-31+G*',
@@ -35,10 +36,25 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
                         max_scf_cycles=500,
                         sym_ignore=True,
                         scf_algorithm=scf_algorithm,
-                        extra_rem_keywords={'input_bohr':'true'},
-                        )       
-    elif spin_flip==1:                
-        qc_inp=QchemInput(molecule,
+                        extra_rem_keywords={'input_bohr':'true'}
+                        # set_iter=500,
+                        )
+        else:
+            qc_inp=QchemInput(molecule,
+                        jobtype='force',
+                        exchange='BHHLYP',
+                        basis='6-31+G*',
+                        unrestricted=True,
+                        max_scf_cycles=500,
+                        sym_ignore=True,
+                        scf_algorithm=scf_algorithm,
+                        extra_rem_keywords={'input_bohr':'true'}
+                        # set_iter=500,
+                        )  
+    elif spin_flip==1:   
+        if Guess:             
+            qc_inp=QchemInput(molecule,
+                        scf_guess = coefficients,
                         jobtype='force',
                         exchange='BHHLYP',
                         basis='6-31+G*',
@@ -51,33 +67,45 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
                         cis_n_roots=1,
                         cis_state_deriv=1
                         )
-    if Guess:
-       qc_inp.update_input({'scf_guess':coefficients})  
- 
+        else:
+            qc_inp=QchemInput(molecule,
+                        jobtype='force',
+                        exchange='BHHLYP',
+                        basis='6-31+G*',
+                        unrestricted=True,
+                        max_scf_cycles=500,
+                        sym_ignore=True,
+                        scf_algorithm=scf_algorithm,
+                        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500},
+                        # set_iter=500,
+                        cis_n_roots=1,
+                        cis_state_deriv=1
+                        )
+       
     return qc_inp
                       
 def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True): 
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     try:
-        print(ncpu)
-        output, ee = get_output_from_qchem(qc_inp,processors=8,return_electronic_structure=True)
-        molecule.update_elecinfo(ee['coefficients'])
+        output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
+        molecule.elecinfo=(ee['coefficients'])
     except:
         print('Using DIIS_GDM algorithm')
         # Retry with a different setup
-        qc_inp.update_input({'scf_algorithm': 'DIIS_GDM', 'scf_guess': 'sad'})
+        qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False)
         try:
-            output, ee = get_output_from_qchem(qc_inp,processors=8)
+            output, ee = get_output_from_qchem(qc_inp,processors=ncpu)
         except:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
+                file.write(output)
             exit()
     # Job completed successfully
     readqchem(output, molecule, n, nstates,spin_flip)
     # Append f.out content to f.all
     with open("f.all", "a") as f_all:
         f_all.write(output)
-    return 
+    return molecule
 
 
 def readqchem(output, molecule, natoms, nst,spin_flip):

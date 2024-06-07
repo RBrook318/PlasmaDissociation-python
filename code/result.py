@@ -67,7 +67,6 @@ def detect_dissociation(bondarr):
 def compile_results():
     with open('output/dissociation.out', "r") as f:
         lines = f.readlines()
-        print(lines)
 
     for line in lines:
         if line.startswith("Dissociation detected"):

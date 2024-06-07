@@ -9,7 +9,7 @@ class NumpyEncoder(json.JSONEncoder):
         return super(NumpyEncoder, self).default(obj)
     
 class Molecule:
-    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None):
+    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None,elecinfo=None):
         self.symbols = symbols
         self.coordinates = np.array(coordinates, dtype=np.float128)
         self.momenta = np.array(momenta, dtype=np.float128) if momenta is not None else None
@@ -19,7 +19,7 @@ class Molecule:
         self.timestep = timestep
         self.multiplicity = multiplicity
         self.dissociation_flags = dissociation_flags or ["NO"] * len(symbols)
-        self.elecinfo = None
+        self.elecinfo = elecinfo if elecinfo is not None else None
 
     def update_symbols(self, new_symbols):
         self.symbols = new_symbols
@@ -77,7 +77,8 @@ class Molecule:
             amplitudes=self.amplitudes.copy() if self.amplitudes is not None else None,
             timestep=self.timestep,
             multiplicity=self.multiplicity,
-            dissociation_flags=self.dissociation_flags
+            dissociation_flags=self.dissociation_flags,
+            elecinfo = self.elecinfo
         )
         
         return new_molecule
@@ -104,9 +105,6 @@ class Molecule:
     @classmethod
     def from_dict(cls, data):
         amplitudes = data['Amplitudes']
-        print(amplitudes)
-        complex_amplitudes = np.array([complex(real, imag) for real, imag in amplitudes])
-        print(complex_amplitudes)
         if isinstance(amplitudes[0], (float, int)):
             # New format: a list of floats
             pass  # You can keep it as it is
