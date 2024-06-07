@@ -94,7 +94,8 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
         # Retry with a different setup
         qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False)
         try:
-            output, ee = get_output_from_qchem(qc_inp,processors=ncpu)
+            output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
+            molecule.elecinfo=(ee['coefficients'])
         except:
             with open("ERROR", "w") as file:
                 file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
