@@ -92,7 +92,8 @@ if __name__ == "__main__":
     # Load molecule coordinates from pubchem
     molecule = get_geometry_from_pubchem(inputs["run"]["Molecule"])
     # Write bond breaking file to results folder
- 
+    if inputs["run"]["method"] == "QChem":
+        qc.initial_conditions
     # Optimise the molecule
     qc_inp = QchemInput(molecule,
                         jobtype='opt',

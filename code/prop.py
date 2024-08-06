@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.linalg import expm
-from chemformula import ChemFormula
+
 
 np.set_printoptions(precision=30)
 
@@ -75,7 +75,6 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
 
     for n1 in range(nst):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
-
         for n2 in range(n1 + 1, nst):
             electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling)
             electronic_hamiltonian[n2, n1] = -electronic_hamiltonian[n1, n2]
@@ -118,6 +117,7 @@ def restore_molecule(molecule, shrunk_molecule, shrunk_index):
         molecule.symbols[index] = shrunk_molecule.symbols[i]
         molecule.coordinates[index,:] = shrunk_molecule.coordinates[i,:]
         molecule.momenta[index,:] = shrunk_molecule.momenta[i,:]
+        
     molecule.update_scf_energy(shrunk_molecule.scf_energy)
     molecule.update_forces(shrunk_molecule.forces)
     molecule.update_amplitudes(shrunk_molecule.amplitudes)
@@ -126,10 +126,8 @@ def restore_molecule(molecule, shrunk_molecule, shrunk_index):
     return molecule
 
 def prop_1(molecule1, molecule2, natoms, nst, increment):
-    Mau=1822.887
     amplitudes = molecule1.amplitudes
     velocities = np.zeros((natoms,3))
-    mass = np.zeros((natoms))
     forces_1 = molecule1.forces
     scf_energy_1 = molecule1.scf_energy
     molecule2 = molecule1.copy()
@@ -140,8 +138,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     
     Coupling = 0
     for i in range(0, natoms):
-        mass[i] = Mau * int(ChemFormula(shrunk_molecule.symbols[i]).formula_weight)
-        velocities[i,:] = shrunk_molecule.momenta[i,:]/mass[i]
+        velocities[i,:] = shrunk_molecule.momenta[i,:]/shrunk_molecule.masses[i]
     
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
 
@@ -161,7 +158,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
   
     Force_vector = Force_vector.reshape(-1, 3) 
     for i in range(natoms):
-        shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/mass[i]
+        shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/shrunk_molecule.masses[i]
         shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + increment*Force_vector[i,:]
 
     restore_molecule(molecule2, shrunk_molecule, shrunk_index)
@@ -169,12 +166,10 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     return molecule2
 
 def prop_2(molecule1, molecule2, natoms, nst, increment):
-
-    Mau=1822.887
     ndim = natoms*3
     velocities_1 = np.zeros((natoms,3))
     velocities_2 = np.zeros((natoms,3))
-    mass = np.zeros((natoms))
+
 
 
     shrunk_molecule1, shrunk_index = shrink_molecule(molecule1)
@@ -184,9 +179,8 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     Coupling = 0
     natoms = len(shrunk_molecule1.symbols)
     for i in range(0, natoms):
-        mass[i] = Mau * int(ChemFormula(shrunk_molecule1.symbols[i]).formula_weight)
-        velocities_1[i,:] = shrunk_molecule1.momenta[i,:]/mass[i]
-        velocities_2[i,:] = shrunk_molecule2.momenta[i,:]/mass[i]
+        velocities_1[i,:] = shrunk_molecule1.momenta[i,:]/shrunk_molecule1.masses[i]
+        velocities_2[i,:] = shrunk_molecule2.momenta[i,:]/shrunk_molecule2.masses[i]
         
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,Coupling)
 
@@ -260,6 +254,10 @@ def fragements(molecule,spin_flip):
                     molecule.multiplicity = 2
             molecule.dissociation_flags[i - 1] = 'YES'
             dissociated = 1
+            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
+            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
+            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
+            j -= 1
         j += 1
 
     return molecule, dissociated
@@ -280,9 +278,10 @@ def prop_diss(molecule, increment):
     velocities = np.zeros((3))
 
     for i in dis_index:
-        mass = Mau * int(ChemFormula(molecule.symbols[i]).formula_weight)
-       
-        velocities[:] = molecule.momenta[i, :] / mass
+        velocities[:] = molecule.momenta[i, :] / molecule.masses[i]
         molecule.coordinates[i, :] = molecule.coordinates[i, :] + increment * velocities[:]
 
     return molecule
+
+
+    

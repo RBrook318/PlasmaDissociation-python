@@ -187,7 +187,7 @@ def combine_fragments():
     if os.path.exists("../results/fragments.out"):
        combine_fragment_counts("/output/fragments.out", "../results/fragments.out", "../results/fragments.out")
     else:
-        shutil.copy2("/output/fragments.out","../results")
+        shutil.copy2("output/fragments.out","../results")
 
 def combine_fragment_counts(file1, file2, output_file):
     # Read fragment counts from the first file

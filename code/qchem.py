@@ -5,6 +5,8 @@ import numpy as np
 import math
 from pyqchem import QchemInput, Structure
 from pyqchem import get_output_from_qchem
+from pyqchem.parsers.parser_optimization import basic_optimization
+from pyqchem.parsers.parser_frequencies import basic_frequencies
 
 np.set_printoptions(precision =30)
 
@@ -143,7 +145,37 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
     f = np.where(f == -0.0, 0.0, f)
     # Update the forces in the Molecule object
     molecule.update_forces(f)
+
+def initial_conditions(symbols,coords,cores):
+    molecule = Structure(coordinates=coords, symbols=symbols, multiplicity=1)
+    qc_inp = QchemInput(molecule,
+                        jobtype='opt',
+                        exchange='BHHLYP !50% HF +  50% Becke88 exchange',
+                        basis='6-31+G*',
+                        unrestricted=True,
+                        max_scf_cycles=500,
+                        sym_ignore=True,
+                        scf_algorithm='diis',
+                        extra_rem_keywords={'input_bohr':'true'}
+                        )
     
+    output = get_output_from_qchem(qc_inp,processors=cores)
+    with open('optimisation.out', 'w') as f:
+        f.write(output)
+    parser_output = basic_optimization(output)
+    opt_geoms=(parser_output['optimized_molecule'])
+    # Find Normal modes
+    qc_inp = QchemInput(opt_geoms,
+                        jobtype='FREQ',
+                        exchange='BHHLYP',
+                        basis='6-31+G*',
+                        extra_rem_keywords={'input_bohr':'true'}
+                        )
+    output = get_output_from_qchem(qc_inp,cores)
+    with open('modes.out', 'w') as f:
+        f.write(output)
+    parser_output = basic_frequencies(output)
+    return opt_geoms,parser_output
 # -------------------------------------------------------------------------
 
 

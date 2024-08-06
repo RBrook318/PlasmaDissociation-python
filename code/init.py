@@ -1,15 +1,15 @@
-# init.py
 import numpy as np
 import json
 np.set_printoptions(precision=30)
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.float128):
             return float(obj)
         return super(NumpyEncoder, self).default(obj)
-    
+
 class Molecule:
-    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None,elecinfo=None):
+    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None, elecinfo=None, masses=None):
         self.symbols = symbols
         self.coordinates = np.array(coordinates, dtype=np.float128)
         self.momenta = np.array(momenta, dtype=np.float128) if momenta is not None else None
@@ -20,6 +20,7 @@ class Molecule:
         self.multiplicity = multiplicity
         self.dissociation_flags = dissociation_flags or ["NO"] * len(symbols)
         self.elecinfo = elecinfo if elecinfo is not None else None
+        self.masses = np.array(masses, dtype=np.float128) if masses is not None else np.zeros(len(symbols), dtype=np.float128)
 
     def update_symbols(self, new_symbols):
         self.symbols = new_symbols
@@ -51,6 +52,9 @@ class Molecule:
     def update_elecinfo(self, new_elecinfo):
         self.elecinfo = new_elecinfo
 
+    def update_masses(self, new_masses):
+        self.masses = np.array(new_masses, dtype=np.float128)
+
     def print_info(self):
         print("Symbols:", self.symbols)
         print("Coordinates:")
@@ -65,6 +69,8 @@ class Molecule:
         print("Timestep:", self.timestep)
         print("Multiplicity:", self.multiplicity)
         print("Dissociation Flags:", self.dissociation_flags)
+        print("Masses:")
+        print(self.masses)
 
     def copy(self):
         # Create a new instance with the same attribute values
@@ -78,7 +84,8 @@ class Molecule:
             timestep=self.timestep,
             multiplicity=self.multiplicity,
             dissociation_flags=self.dissociation_flags,
-            elecinfo = self.elecinfo
+            elecinfo=self.elecinfo,
+            masses=self.masses.copy() if self.masses is not None else None
         )
         
         return new_molecule
@@ -94,7 +101,8 @@ class Molecule:
             'Amplitudes': [(float(a.real), float(a.imag)) for a in self.amplitudes],
             'Timestep': self.timestep,
             'Multiplicity': self.multiplicity,
-            'Dissociation Flags': self.dissociation_flags
+            'Dissociation Flags': self.dissociation_flags,
+            'Masses': self.masses.tolist() if self.masses is not None else None
         }
 
     def to_json(self, filename):
@@ -121,7 +129,8 @@ class Molecule:
             amplitudes=np.array(amplitudes),
             timestep=data['Timestep'],
             multiplicity=data['Multiplicity'],
-            dissociation_flags=data['Dissociation Flags']
+            dissociation_flags=data['Dissociation Flags'],
+            masses=data['Masses'] if 'Masses' in data and data['Masses'] is not None else None
         )
 
     @classmethod
@@ -132,22 +141,23 @@ class Molecule:
             return cls.from_dict(data)
 
 
-def create_empty_molecule(natoms,nst,spin_flip):
+def create_empty_molecule(natoms, nst, spin_flip):
     symbols = [''] * natoms
-    coordinates = np.zeros((natoms, 3))
-    scf_energy = np.zeros((nst))
-    momenta = np.zeros((natoms, 3))
-    forces = np.zeros((natoms, 3))
+    coordinates = np.zeros((natoms, 3), dtype=np.float128)
+    scf_energy = np.zeros((nst), dtype=np.float128)
+    momenta = np.zeros((natoms, 3), dtype=np.float128)
+    forces = np.zeros((natoms, 3), dtype=np.float128)
     if spin_flip == 1:
         multiplicity = 5
     elif spin_flip == 0:
         multiplicity = 3
-    amplitudes = np.zeros((nst))
-    amplitudes[0] = 1
-    return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity)
+    amplitudes = np.zeros((nst), dtype=np.complex256)
+    amplitudes[0] = 1 + 0j
+    masses = np.zeros(natoms, dtype=np.float128)
+    return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity, masses=masses)
 
-def initialize_structure(nst,spin_flip):
-    file_path = f"Geometry"  # Updated file path with reps variable
+def initialize_structure(nst, spin_flip):
+    file_path = "Geometry"  # Updated file path
 
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -159,41 +169,64 @@ def initialize_structure(nst,spin_flip):
 
     if natoms == 0:
         raise ValueError("The file does not contain a 'momentum' line.")
+    
     # Read geometry coordinates
     geometry_lines = lines[0:natoms]
     symbols = [line.split()[0] for line in geometry_lines]
     geometry_data = np.array([list(map(float, line.split()[1:])) for line in geometry_lines], dtype=np.float64)
 
-    # Reshape geometry_data to be a natoms x 3 array
-    geometry_data = geometry_data.reshape(-1, 3)
-
     # Read momentum coordinates
     momentum_lines = lines[natoms+1:2*natoms+1]
-    momentum_data = np.array([line.split() for line in momentum_lines], dtype=np.float64)
+    momentum_data = np.array([list(map(float, line.split())) for line in momentum_lines], dtype=np.float64)
 
+    # Read amplitudes if present
     if len(lines) > 2*natoms+1:
-        amplitudes_line = lines[2*natoms+2:]  # Assuming amplitudes are two lines below "momentum"
-        amplitudes = list(map(float, amplitudes_line))
+        amplitudes_lines = lines[2*natoms+2:]  # Assuming amplitudes are two lines below "momentum"
+        amplitudes = list(map(float, amplitudes_lines))
     else: 
-        amplitudes = np.array([1.0, 0.0])
+        amplitudes = [1.0, 0.0]
 
     if spin_flip == 1:
         multiplicity = 5
     elif spin_flip == 0:
         multiplicity = 3
 
-
-    forces = np.zeros((natoms,3))
-    scf_energy = np.zeros((nst))
+    forces = np.zeros((natoms, 3), dtype=np.float128)
+    scf_energy = np.zeros((nst), dtype=np.float128)
+    masses = np.zeros(natoms, dtype=np.float128)  # Initialize masses array
+    masses = setup_masses(symbols)
     # Create Molecule object with default amplitudes
-    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity= multiplicity,amplitudes=amplitudes)
+    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity=multiplicity, amplitudes=amplitudes, masses=masses)
 
     return molecule
 
-def create_molecule(reps, natoms, nst,spin_flip):
+def create_molecule(reps, natoms, nst, spin_flip):
     if reps is None:
         # If reps is None, create an empty molecule
         return create_empty_molecule(natoms, nst, spin_flip)
     else:
         # Otherwise, create an empty molecule
-        return initialize_structure(nst,spin_flip)
+        return initialize_structure(nst, spin_flip)
+
+def setup_masses(symbols):
+    
+    ATOMIC_MASSES = {
+        'H': 1, 'He': 4, 'Li': 7, 'Be': 9, 'B': 11, 'C': 12, 'N': 14, 'O': 16, 'F': 19, 'Ne': 20,
+        'Na': 23, 'Mg': 24, 'Al': 27, 'Si': 28, 'P': 31, 'S': 32, 'Cl': 35, 'Ar': 40, 'K': 39, 'Ca': 40,
+        'Sc': 45, 'Ti': 48, 'V': 51, 'Cr': 52, 'Mn': 55, 'Fe': 56, 'Co': 59, 'Ni': 59, 'Cu': 64, 'Zn': 65,
+        'Ga': 70, 'Ge': 73, 'As': 75, 'Se': 79, 'Br': 80, 'Kr': 84, 'Rb': 85, 'Sr': 88, 'Y': 89, 'Zr': 91,
+        'Nb': 93, 'Mo': 96, 'Tc': 98, 'Ru': 101, 'Rh': 103, 'Pd': 106, 'Ag': 108, 'Cd': 112, 'In': 115,
+        'Sn': 119, 'Sb': 122, 'Te': 127, 'I': 127, 'Xe': 131, 'Cs': 133, 'Ba': 137, 'La': 138, 'Ce': 140,
+        'Pr': 141, 'Nd': 144, 'Pm': 145, 'Sm': 150, 'Eu': 152, 'Gd': 157, 'Tb': 159, 'Dy': 162, 'Ho': 165,
+        'Er': 167, 'Tm': 169, 'Yb': 173, 'Lu': 175, 'Hf': 178, 'Ta': 181, 'W': 184, 'Re': 186, 'Os': 192,
+        'Ir': 193, 'Pt': 195, 'Au': 197, 'Hg': 201, 'Tl': 204, 'Pb': 207, 'Bi': 209, 'Th': 232, 'U': 238
+    }
+
+    
+    # Fetch the masses from the dictionary
+    masses = np.array([ATOMIC_MASSES.get(symbol, 0.0) for symbol in symbols], dtype=np.float128)
+    
+    # Convert to mau units (1 amu = 1822.887 mau)
+    masses_mau = masses * 1822.887
+    
+    return masses_mau

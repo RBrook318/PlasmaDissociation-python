@@ -139,6 +139,7 @@ if __name__=="__main__":
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
             f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
+        f.write("unset GOMP_CPU_AFFINITY KMP_AFFINITY \n")    
         f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
         f.write("python ./../code/main.py")
         f.close()
@@ -175,7 +176,8 @@ if __name__=="__main__":
         for i in range(inputs["setup"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
             EXDIR1=os.getcwd()
-            subprocess.call(["python", "../../../code/setup.py"])
+            print(EXDIR1)
+            subprocess.call(["python", "../../../code/main.py"])
 
        
         

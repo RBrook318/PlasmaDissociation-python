@@ -1,20 +1,20 @@
 {
     "setup":{
-        "Runfolder":"Hometest",
+        "Runfolder":"Pyscf-test",
         "repeats":1,
-        "cores":16,
+        "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":0,
-        "Molecule":"Methane",
+        "Molecule":"HFC-236fa",
         "States":2,
         "Temp":5000,
         "Branches":0,
         "Timestep":10,
-        "Tot_timesteps":5,
-        "Geom_start":1,
+        "Tot_timesteps":1,
+        "Geom_start":3,
         "Spin_flip":0,
         "method": "PySCF",
         "GPU": 0
