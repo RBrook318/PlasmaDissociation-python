@@ -1,20 +1,20 @@
 {
     "setup":{
-        "Runfolder":"Pyscf-test",
-        "repeats":1,
+        "Runfolder":"5rep-test",
+        "repeats":5,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":0,
-        "Molecule":"HFC-236fa",
+        "Molecule":"HFC-236a",
         "States":2,
         "Temp":5000,
         "Branches":0,
         "Timestep":10,
         "Tot_timesteps":1,
-        "Geom_start":3,
+        "Geom_start":1,
         "Spin_flip":0,
         "method": "PySCF",
         "GPU": 0

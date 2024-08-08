@@ -13,6 +13,7 @@ Then following packages can then be added to the environment to ensure proper co
 Python package requirements
 - numpy -- pip install pyinstaller
 - scipy -- pip install scipy
+- pubchempy -- pip install pubchempy
 - subrprocess
 - re 
 - math

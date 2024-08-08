@@ -52,8 +52,7 @@ if __name__=="__main__":
     if(HPCFLG==0):
         EXDIR="../EXEC"
         if not os.path.exists("../EXEC"):
-            os.mkdir("../EXEC")
-            
+            os.mkdir("../EXEC")  
     else:
         EXDIR="/nobackup/"+getpass.getuser()
         if not os.path.exists(EXDIR):
@@ -69,6 +68,9 @@ if __name__=="__main__":
     os.mkdir(EXDIR+"/"+inputs["setup"]["Runfolder"])
     EXDIR1=EXDIR+"/"+inputs["setup"]["Runfolder"]  
     os.mkdir(EXDIR1+"/results")
+    os.mkdir(EXDIR1+"/results/bonds")
+    os.mkdir(EXDIR1+"/results/specifics")
+    os.mkdir(EXDIR1+"/results/graphs")
     os.mkdir(EXDIR1+"/setup")
     os.mkdir(EXDIR1+"/setup/tmp")
     #Copies input files
@@ -175,7 +177,6 @@ if __name__=="__main__":
     else: 
         for i in range(inputs["setup"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
-            EXDIR1=os.getcwd()
             print(EXDIR1)
             subprocess.call(["python", "../../../code/main.py"])
 

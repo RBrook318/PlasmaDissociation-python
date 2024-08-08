@@ -1,7 +1,10 @@
 # PySCF section 
 import time
-from pyscf import gto, scf, dft, grad, lib
-from gpu4pyscf.dft import rks
+import os
+from pyscf import gto, scf, dft, grad, lib, hessian
+# from pyscf.geomopt.geometric_solver import optimize
+# from pyscf.prop.freq import rks as freq
+# from gpu4pyscf.dft import rks
 
 def create_pyscf_molecule(molecule):
     # Extract molecule information
@@ -23,29 +26,21 @@ def create_pyscf_molecule(molecule):
 
     return mol
 
-def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None,prev_mf=None,use_gpu =False):
-    timescf1= time.time()
+def run_pyscf_calculation(mol, scf_algorithm, prev_mf=None,use_gpu =False):
+    
     print(lib.num_threads())
-    if exchange_functional:
-        if mol.spin == 0:
-            mf = dft.RKS(mol)
-        else:
-            mf = dft.UKS(mol)
-        # Manually specify BHHLYP components
-        if exchange_functional.upper() == 'BHHLYP':
-            mf.xc = '0.5*HF + 0.5*B88,LYP'
-        else:
-            mf.xc = exchange_functional
-    else:
-        if scf_algorithm == "DIIS":
-            mf = scf.RHF(mol) if mol.spin == 0 else scf.UHF(mol)
-        elif scf_algorithm == "DIIS_GDM":
-            mf = scf.newton(mol)
-        else:
-            raise ValueError(f"Unknown SCF algorithm: {scf_algorithm}")
 
-    mf.conv_tol = 1e-7
-    # mf.max_cycle = 500
+    if mol.spin == 0:
+        mf = dft.RKS(mol).density_fit()
+    else:
+        mf = dft.UKS(mol).density_fit()
+    
+    mf.xc = '0.5*HF + 0.5*B88,LYP'
+    mf.conv_tol = 1e-8
+    mf.conv_tol_grad = 1e-7
+    mf.max_cycle = 100
+    mf.verbose = 3
+
     if prev_mf is not None:
         mf.mo_coeff = prev_mf.mo_coeff
         mf.mo_occ = prev_mf.mo_occ
@@ -57,32 +52,29 @@ def run_pyscf_calculation(mol, scf_algorithm, exchange_functional=None,prev_mf=N
         forces = gobj.kernel()
         energy = mf.to_gpu().kernel()  
     else: 
+        timescf1= time.time()
         energy = mf.kernel()
-        # Calculate forces (gradients)
+        timescf2= time.time()
+        print('SCF energy time:', timescf2-timescf1)
+        timescf1= time.time()
         if mol.spin == 0:
-            if exchange_functional:
-                grad_calc = grad.RKS(mf)
-            else:
-                grad_calc = grad.RHF(mf)
+            grad_calc = grad.RKS(mf)
         else:
-            if exchange_functional:
-                grad_calc = grad.UKS(mf)
-            else:
-                grad_calc = grad.UHF(mf)
-        
+            grad_calc = grad.UKS(mf)
         forces = grad_calc.kernel()
-
+        timescf2= time.time()
+        print('SCF gradients time:', timescf2-timescf1)
     return energy, forces, mf 
 
-def run_pySCF(molecule,Guess=True,exchange_functional='BHHLYP',use_gpu = False):
+def run_pySCF(molecule,Guess=True,use_gpu = False):
     e = molecule.scf_energy
     mol = create_pyscf_molecule(molecule)
     guess = False
     time1 = time.time()
     if Guess ==False: 
-        energy, forces,mf = run_pyscf_calculation(mol, 'DIIS', exchange_functional)
+        energy, forces,mf = run_pyscf_calculation(mol, 'DIIS')
     else:
-        energy, forces,mf = run_pyscf_calculation(mol, 'DIIS', exchange_functional,molecule.elecinfo)
+        energy, forces,mf = run_pyscf_calculation(mol, 'DIIS',molecule.elecinfo)
     time2=time.time()
     print('pyscf job: ',  time2-time1)
     e[1] = energy
@@ -91,3 +83,34 @@ def run_pySCF(molecule,Guess=True,exchange_functional='BHHLYP',use_gpu = False):
     forces = forces.reshape(-1) 
     molecule.update_forces(forces)
     molecule.update_elecinfo(mf)
+
+def initial_conditions(symbols, coords):
+    # Create PySCF molecule
+    mol = gto.Mole()
+    mol.atom = [(symbols[i], coords[i]) for i in range(len(symbols))]
+    mol.basis = '6-31+G*'
+    mol.unit = 'Bohr'
+    mol.build()
+    
+    # Optimize geometry
+    start_time = time.time()
+    mf = dft.RKS(mol)
+    mf.xc = '0.5*HF + 0.5*B88,LYP'
+    mf.conv_tol = 1e-7
+    mf.max_cycle = 500
+    mf.kernel()
+    mol_eq = optimize(mf)
+    print(mol_eq.atom_coords())
+    geom_opt = mol_eq.atom_coords()
+    end_time = time.time()
+    print(f'Geometry optimization took {end_time - start_time} seconds')
+    
+    # Calculate normal modes (frequencies)
+    start_time = time.time()
+    mf = dft.freq(mol_eq).run()
+    w, modes = freq.Freq(mf).kernel()
+    print(freq)
+    end_time = time.time()
+    print(f'Frequency calculation took {end_time - start_time} seconds')
+    
+    return geom_opt, freq
