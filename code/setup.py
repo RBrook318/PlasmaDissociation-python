@@ -15,7 +15,7 @@ from pyqchem.tools import get_geometry_from_pubchem
 from pyqchem import get_output_from_qchem
 from pyqchem.parsers.parser_optimization import basic_optimization
 from pyqchem.parsers.parser_frequencies import basic_frequencies
-
+import qchem
 
 def convert_to_bohr(coordinates):
     angstrom_to_bohr = 1.88973

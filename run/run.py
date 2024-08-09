@@ -113,7 +113,7 @@ if __name__=="__main__":
                 f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
                 f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
             f.write("cd "+EXDIR1+"/setup \n")
-            f.write("python ./../setup.py")
+            f.write("python ./../code/setup.py")
             f.close()
             command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
             subprocess.call(command)
