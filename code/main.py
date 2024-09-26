@@ -83,4 +83,7 @@ for i in range(int(startstep), endstep+1):
         Guess = False
 result.process_results()
 end_time=time.time()
-print("Time taken to run: ", end_time-start_time)
+with open("output/time.out", "w") as time:
+    time.write(f"{(end_time-start_time)/3600}\n")
+    time.write(f"{(end_time-start_time)/60}\n")
+    time.write(f"{(end_time-start_time)}\n")

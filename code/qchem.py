@@ -106,8 +106,8 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
     # Job completed successfully
     readqchem(output, molecule, n, nstates,spin_flip)
     # Append f.out content to f.all
-    with open("f.all", "a") as f_all:
-        f_all.write(output)
+    # with open("f.all", "a") as f_all:
+    #     f_all.write(output)
     return molecule
 
 

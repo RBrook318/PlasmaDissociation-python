@@ -325,9 +325,12 @@ def write_graphs_json():
 
     color_map = {
         "C-O": "red",
+        "O-C": "red",
         "C-H": "blue",
         "C-F": "green",
-        "C-C": "black"
+        "F-C": "green",
+        "C-C": "black",
+        "C=C": "orange"
     }
 
     carbon_colors = ["red", "blue", "green", "black", "purple", "orange", "brown", "cyan", "magenta"]
@@ -359,27 +362,22 @@ def write_graphs_json():
             "color": carbon_colors[index % len(carbon_colors)]
         })
 
+    # Generate the bond-type-specific graphs
     for bond_type, bonds in bond_counts.items():
         config[bond_type] = {
             "output_file": f"../results/graphs/{bond_type}.png",
             "files": []
         }
 
-        # Group bonds by the carbon atom in the bond or handle non-carbon bonds directly
+        # Group bonds by the carbon atom in the bond
         carbon_env_files = defaultdict(list)
-        non_carbon_bonds = []
-
         for bond in bonds:
             atoms = bond.split('-')
             carbon_atoms = [atom for atom in atoms if symbols[int(atom) - 1] == 'C']
-            
-            if carbon_atoms:
-                for carbon in carbon_atoms:
-                    carbon_env_files[carbon].append(bond)
-            else:
-                non_carbon_bonds.append(bond)
+            for carbon in carbon_atoms:
+                carbon_env_files[carbon].append(bond)
 
-        # Combine files for bonds that contain carbon atoms
+        # Combine files and add to the config
         for carbon, bond_list in carbon_env_files.items():
             combined_file = f"../results/bonds/{bond_type}_{carbon}.out"
             with open(combined_file, 'w') as outfile:
@@ -391,29 +389,10 @@ def write_graphs_json():
                     except FileNotFoundError:
                         print(f"Warning: {bond_file} not found.")
             config[bond_type]["files"].append({
-                "filename": combined_file,
+                "filename": f"../results/bonds/{bond_type}_{carbon}.out",
                 "label": f"{bond_type} ({carbon})",
                 "no_bonds": len(bond_list),
                 "color": carbon_colors[int(carbon) % len(carbon_colors)]
-            })
-
-        # Handle non-carbon bonds by plotting each member of the bond type against each other
-        if non_carbon_bonds:
-            combined_file = f"../results/bonds/{bond_type}_non_carbon.out"
-            with open(combined_file, 'w') as outfile:
-                for bond in non_carbon_bonds:
-                    bond_file = f"../results/bonds/{bond}.out"
-                    try:
-                        with open(bond_file, 'r') as infile:
-                            outfile.write(infile.read())
-                    except FileNotFoundError:
-                        print(f"Warning: {bond_file} not found.")
-            
-            config[bond_type]["files"].append({
-                "filename": combined_file,
-                "label": f"{bond_type} (Non-Carbon Bonds)",
-                "no_bonds": len(non_carbon_bonds),
-                "color": "grey"  # Choose a color for non-carbon bonds
             })
 
     # Save the JSON configuration to a file
@@ -421,4 +400,3 @@ def write_graphs_json():
         json.dump(config, json_file, indent=4)
 
         
-# Run the function to generate the JSON file

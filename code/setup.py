@@ -15,7 +15,7 @@ from pyqchem.tools import get_geometry_from_pubchem
 from pyqchem import get_output_from_qchem
 from pyqchem.parsers.parser_optimization import basic_optimization
 from pyqchem.parsers.parser_frequencies import basic_frequencies
-import qchem
+import qchem as qc
 
 def convert_to_bohr(coordinates):
     angstrom_to_bohr = 1.88973
@@ -63,13 +63,11 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     rn = np.random.randn(nmod, mom_num)  # Use np.random.randn for standard normal distribution
     m=m*1822.8885300626
     T=T*0.0000031668
-    print(T)
     # Initialize arrays for random
     Meff = np.zeros(nmod)
     rv = np.zeros((nmod, mom_num))
     for i in range(nmod):
         for j in range(n):
-            print(m[j])
             Meff[i] = Meff[i]+np.sum(((Ax[j, i]**2) + (Ay[j, i]**2) + (Az[j, i]**2)) * m[j])
         rv[i, :] = rn[i, :] * np.sqrt(2 * T / Meff[i])
     # Calculate the velocity by applying it through the tranformation matrix of normal modes.
@@ -85,6 +83,33 @@ def create_geom(n,nmod,T,modes,m,mom_num):
         Pz[i,:] = Vz[i,:]*m[i]
     
     return Px, Py, Pz
+
+def find_energies(Px, Py, Pz, masses):
+
+    mom_num = Px.shape[1]  # Number of geometries (momenta sets)
+    natoms = len(masses)  # Number of atoms
+
+    # Convert masses to atomic units
+    masses = masses * 1822.8885300626
+
+    # Array to store kinetic energies for each geometry
+    kinetic_energies = np.zeros(mom_num)
+
+    # Loop through each geometry
+    for geom_index in range(mom_num):
+        kinetic_energy = 0.0
+        
+        # Calculate the kinetic energy for each atom in this geometry
+        for atom_index in range(natoms):
+            p_squared = Px[atom_index, geom_index]**2 + Py[atom_index, geom_index]**2 + Pz[atom_index, geom_index]**2
+            kinetic_energy += p_squared / (2 * masses[atom_index])
+        
+        # Store the kinetic energy of the current geometry
+        kinetic_energies[geom_index] = kinetic_energy
+
+    return kinetic_energies
+
+
 
 if __name__ == "__main__":
     with open('../inputs.json') as f:
@@ -130,17 +155,34 @@ if __name__ == "__main__":
 
     # Extract masses of atoms   
     masses=(qc_inp.molecule.get_atomic_masses())
-    Px, Py, Pz = create_geom(natoms,num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
+
+    cutoff_percentage = inputs['run']['Cutoff']
+    num_geoms = int(inputs["setup"]["repeats"] / (cutoff_percentage / 100))
+
+    # Create geometries and momenta
+    Px, Py, Pz = create_geom(natoms, num_modes, inputs["run"]["Temp"], modes, masses, num_geoms)
+
     # Extract atom symbols
-    atoms=qc_inp.molecule.get_symbols()
+    atoms = qc_inp.molecule.get_symbols()
+
+    # Calculate energies for all geometries
+    energies = find_energies(Px, Py, Pz, masses)
+
+    # Sort geometries by their kinetic energy and apply cutoff
+    sorted_indices = np.argsort(energies)[::-1]  # Indices of sorted energies (high to low)
+    num_geoms_to_keep = int(num_geoms * (cutoff_percentage / 100.0))
+    selected_indices = sorted_indices[:num_geoms_to_keep]
+    print("Selected indices:", selected_indices)
+    # Filter geometries by the selected indices
+    Px, Py, Pz = Px[:, selected_indices], Py[:, selected_indices], Pz[:, selected_indices]
+
     # Write momenta files to repetition folder
     for j in range(inputs["setup"]["repeats"]):
-        with open('../rep-'+str(j+1)+'/Geometry', 'w') as file:
+        with open(f'../rep-{j+1}/Geometry', 'w') as file:
             file.write(opt_geoms)
             file.write("momentum\n")
             # Write Px, Py, and Pz for each atom on the same line
             for atom in range(natoms):
-                # Access the Px, Py, and Pz values using the corresponding indices
                 px_value = Px[atom, j]
                 py_value = Py[atom, j]
                 pz_value = Pz[atom, j]

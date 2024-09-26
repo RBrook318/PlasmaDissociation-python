@@ -1,22 +1,23 @@
 {
     "setup":{
-        "Runfolder":"5rep-test",
-        "repeats":5,
+        "Runfolder":"i-isomer-1000K(30)",
+        "repeats":100,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":0,
-        "Molecule":"HFC-236a",
+        "Molecule":"i-isomer-1000K",
         "States":2,
-        "Temp":5000,
+        "Temp":1000,
+        "Cutoff": 1,
         "Branches":0,
-        "Timestep":10,
-        "Tot_timesteps":1,
+        "Timestep":30,
+        "Tot_timesteps":700,
         "Geom_start":1,
         "Spin_flip":0,
-        "method": "PySCF",
+        "method": "QChem",
         "GPU": 0
     }
 
