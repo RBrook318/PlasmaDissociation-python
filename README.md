@@ -36,13 +36,16 @@ Python package requirements
 pip install numpy scipy pubchempy subprocess re math sys socket json shutil networkx
 # For QChem users
 pip install pyqchem
-# For PySCF users
-pip install pyscf
 
 Note that when I installed pyqchem the tools folder of packages did not install correctly. I have added all the relevant files in the folder tools. This needs to put into the folder .conda/env/$project_environment_name$/lib/python3.#/site-packages/pyqchem
 
+# For PySCF users
+pip install pyscf
 
----  Running on university of Leeds HPC only ---
+
+
+
+# Running on university of Leeds HPC only 
 I have also found it useful to add a shortcut in my .bashrc file to quickly load the appropriate modules on arc. The foloowing can be added 
 
 scatter(){
