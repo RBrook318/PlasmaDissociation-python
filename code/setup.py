@@ -1,11 +1,20 @@
-#########################################################################################
-#
-#   Python Run script for setting up run paramters for dissociation after electron impact
-#   Written by O Bramley                                          08.05.24
-# 
-#     
-#
-#########################################################################################
+"""
+Python Run script for setting up run parameters for dissociation after electron impact.
+Originally written by O Bramley                                          08.05.24
+
+This script provides functions to facilitate the setup and execution of the initial quantum 
+chemical calculations related to setting up the molecular dynamics. It incorporates 
+geometry optimization, normal mode analysis, and momentum generation to prepare the 
+system for subsequent simulations.
+
+Functions
+---------
+- convert_to_bohr: Converts atomic coordinates from Angstroms to Bohr.
+- organise_modes: Organizes the normal modes of a molecule into a structured format.
+- bondarr: Writes the unique bonds of the molecule to a text file.
+- create_geom: Generates initial momenta based on normal modes and temperature.
+- find_energies: Computes the kinetic energies of geometries based on their momenta.
+"""
 
 
 import numpy as np
@@ -18,6 +27,19 @@ from pyqchem.parsers.parser_frequencies import basic_frequencies
 import qchem as qc
 
 def convert_to_bohr(coordinates):
+    """
+    Convert atomic coordinates from Angstroms to Bohr.
+
+    Parameters
+    ----------
+    coordinates : Coordinates
+        An object containing atomic symbols and their positions in Angstroms.
+
+    Returns
+    -------
+    str
+        A formatted string representing atomic coordinates in Bohr units.
+    """
     angstrom_to_bohr = 1.88973
     values=coordinates.get_coordinates()
     atom=coordinates.get_symbols()
@@ -28,6 +50,22 @@ def convert_to_bohr(coordinates):
    
 
 def organise_modes(modes,atoms):
+    """
+    Organize the normal modes of a molecule into a structured numerical format.
+
+    Parameters
+    ----------
+    modes : list of dict
+        A list of modes, each containing displacement information for the atoms.
+    atoms : int
+        The total number of atoms in the molecule.
+
+    Returns
+    -------
+    np.ndarray
+        A 2D array of shape (len(modes) * atoms, 3) containing the displacements of each atom 
+        in each mode.
+    """
     numeric_modes = np.zeros((len(modes)*atoms, 3))
     cnt=0
     for i in range(len(modes)):
@@ -40,6 +78,18 @@ def organise_modes(modes,atoms):
     return numeric_modes
 
 def bondarr(molecule):
+    """
+    Write the unique bonds of a molecule to a text file.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        An object representing the molecular structure, including atom connectivity.
+
+    Returns
+    -------
+    None
+    """
     bonds = molecule.get_connectivity()
     atoms = molecule.get_symbols()
     unique_bonds = set()
@@ -54,6 +104,29 @@ def bondarr(molecule):
     return
 
 def create_geom(n,nmod,T,modes,m,mom_num):
+    """
+    Generate initial momenta based on normal modes and specified temperature.
+
+    Parameters
+    ----------
+    n : int
+        Number of atoms in the molecule.
+    nmod : int
+        Number of normal modes.
+    T : float
+        Temperature in Kelvin.
+    modes : np.ndarray
+        A 2D array containing the displacements for each normal mode.
+    m : np.ndarray
+        An array of atomic masses.
+    mom_num : int
+        Number of momentum sets to generate.
+
+    Returns
+    -------
+    tuple
+        Three arrays (Px, Py, Pz) representing the momentum components for each atom.
+    """
     Ax = modes[:,0]
     Ay = modes[:,1]
     Az = modes[:,2]
@@ -85,6 +158,25 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     return Px, Py, Pz
 
 def find_energies(Px, Py, Pz, masses):
+    """
+    Calculate the kinetic energies for each geometry based on their momentum components.
+
+    Parameters
+    ----------
+    Px : np.ndarray
+        Array of x momentum components for each atom across multiple geometries.
+    Py : np.ndarray
+        Array of y momentum components for each atom across multiple geometries.
+    Pz : np.ndarray
+        Array of z momentum components for each atom across multiple geometries.
+    masses : np.ndarray
+        Array of atomic masses.
+
+    Returns
+    -------
+    np.ndarray
+        An array containing the kinetic energies for each geometry.
+    """
 
     mom_num = Px.shape[1]  # Number of geometries (momenta sets)
     natoms = len(masses)  # Number of atoms
@@ -112,10 +204,42 @@ def find_energies(Px, Py, Pz, masses):
 
 
 if __name__ == "__main__":
+    """
+    Main execution block for setting up and running dissociation simulations after electron impact.
+
+    This script orchestrates the process of loading molecular geometry, optimizing it using quantum
+    chemistry calculations, determining normal modes, generating random momenta, and calculating
+    kinetic energies for the configurations. The results are then written to specified output files
+    to begin propagation.
+
+    Key Steps:
+    1. Load parameters from 'inputs.json'.
+    2. Retrieve molecular coordinates from PubChem.
+    3. Optimize the molecular geometry.
+    4. Calculate normal modes and organize them.
+    5. Convert coordinates to Bohr units.
+    6. Create random momenta from normal modes and calculate kinetic energies.
+    7. Apply a cutoff to select the most relevant geometries.
+    8. Write output files for each repeat of the simulation.
+    """
+
+    """
+    Key Step 1. Load parameters from 'inputs.json'.
+    """
     with open('../inputs.json') as f:
         inputs=json.load(f)
+
+    """
+    Key Step 2. Retrieve molecular coordinates from PubChem.
+
+    """
     # Load molecule coordinates from pubchem
     molecule = get_geometry_from_pubchem(inputs["run"]["Molecule"])
+
+    """
+    Key Step 3. Optimize the molecular geometry.
+
+    """
     # Write bond breaking file to results folder
     if inputs["run"]["method"] == "QChem":
         qc.initial_conditions
@@ -135,6 +259,11 @@ if __name__ == "__main__":
     pasrser_output = basic_optimization(output)
     opt_geoms=(pasrser_output['optimized_molecule'])
     bondarr(opt_geoms)
+
+    """
+    Key Step 4. Calculate normal modes and organize them.
+
+    """
     # Find Normal modes
     qc_inp = QchemInput(opt_geoms,
                         jobtype='FREQ',
@@ -149,10 +278,19 @@ if __name__ == "__main__":
     natoms = int((num_modes+6)/3)
     modes=organise_modes(pasrser_output['modes'],natoms)
     # Convert Geometries to bohr
+    """
+    Key Step 5. Convert coordinates to Bohr units.
+
+    """
     opt_geoms=convert_to_bohr(opt_geoms)
     with open(inputs["run"]["Molecule"]+'.xyz','w') as f:
         f.write(opt_geoms)
 
+    """
+    Key Step 6. Create random momenta from normal modes and calculate kinetic energies.
+
+    """
+      
     # Extract masses of atoms   
     masses=(qc_inp.molecule.get_atomic_masses())
 
@@ -165,10 +303,15 @@ if __name__ == "__main__":
     # Extract atom symbols
     atoms = qc_inp.molecule.get_symbols()
 
+
     # Calculate energies for all geometries
     energies = find_energies(Px, Py, Pz, masses)
 
-    # Sort geometries by their kinetic energy and apply cutoff
+    """
+    Key Step 7. Apply a cutoff to select the most relevant geometries.
+
+    """
+
     sorted_indices = np.argsort(energies)[::-1]  # Indices of sorted energies (high to low)
     num_geoms_to_keep = int(num_geoms * (cutoff_percentage / 100.0))
     selected_indices = sorted_indices[:num_geoms_to_keep]
@@ -176,6 +319,10 @@ if __name__ == "__main__":
     # Filter geometries by the selected indices
     Px, Py, Pz = Px[:, selected_indices], Py[:, selected_indices], Pz[:, selected_indices]
 
+    """
+    Key Step 8. Write output files for each repeat of the simulation.
+
+    """
     # Write momenta files to repetition folder
     for j in range(inputs["setup"]["repeats"]):
         with open(f'../rep-{j+1}/Geometry', 'w') as file:

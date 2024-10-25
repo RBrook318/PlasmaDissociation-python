@@ -1,14 +1,86 @@
+"""
+init.py
+
+This module provides utilities for initializing molecular dynamics simulation structures, including 
+classes and functions for handling molecular properties such as symbols, coordinates, forces, momenta, 
+and more. 
+
+Classes:
+    NumpyEncoder: Custom JSON encoder for handling numpy float and complex types.
+    Molecule: Represents a molecule with attributes such as symbols, coordinates, forces, and more.
+
+Functions:
+    create_empty_molecule: Creates a molecule instance with default attributes.
+    initialize_structure: Reads molecular structure data from a file and initializes a molecule instance.
+    create_molecule: Wrapper function for molecule creation with optional structure reading.
+    setup_masses: Returns atomic masses for a given set of symbols in atomic mass units (amu).
+"""
+
 import numpy as np
 import json
 np.set_printoptions(precision=30)
 
 class NumpyEncoder(json.JSONEncoder):
+    """
+    A JSON encoder to handle numpy float and complex types for JSON serialization.
+
+    Methods
+    -------
+    default(obj):
+        Overrides default method to check for numpy float and complex types and convert them to standard
+        Python float or complex representations.
+    """
     def default(self, obj):
         if isinstance(obj, np.float64):
             return float(obj)
         return super(NumpyEncoder, self).default(obj)
 
 class Molecule:
+    """
+    Represents a molecule with its properties and methods to manipulate them.
+
+    Attributes
+    ----------
+    symbols : list[str]
+        Chemical symbols for each atom.
+    coordinates : np.ndarray
+        Array of atomic positions in Cartesian coordinates.
+    momenta : np.ndarray, optional
+        Array of atomic momenta, if provided.
+    scf_energy : np.ndarray
+        Array of SCF energy levels.
+    forces : np.ndarray, optional
+        Array of forces acting on atoms, if provided.
+    amplitudes : np.ndarray
+        Array of complex amplitudes representing quantum state amplitudes.
+    timestep : int
+        The current time step in the simulation.
+    multiplicity : int
+        The molecule's spin multiplicity.
+    dissociation_flags : list[str]
+        Flags indicating the dissociation status of each atom.
+    elecinfo : any, optional
+        Additional electronic information.
+    masses : np.ndarray
+        Atomic masses of the elements.
+
+    Methods
+    -------
+    update_*(new_info):
+        Updates * of the molecule class with new_info.
+    print_info():
+        Prints all molecular attributes for inspection.
+    copy():
+        Returns a deep copy of the molecule instance.
+    to_dict():
+        Converts the molecule attributes to a dictionary format.
+    to_json(filename):
+        Saves the molecule attributes as a JSON file.
+    from_dict(data):
+        Class method to initialize a Molecule instance from a dictionary.
+    from_json(filename):
+        Class method to initialize a Molecule instance from a JSON file.
+    """
     def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None, elecinfo=None, masses=None):
         self.symbols = symbols
         self.coordinates = np.array(coordinates, dtype=np.float64)
@@ -142,6 +214,23 @@ class Molecule:
 
 
 def create_empty_molecule(natoms, nst, spin_flip):
+    """
+    Creates a molecule instance with default attributes.
+
+    Parameters
+    ----------
+    natoms : int
+        Number of atoms in the molecule.
+    nst : int
+        Number of states for SCF energy (currently irrelevant).
+    spin_flip : int
+        Indicator for inclusion of Spin-Flip DFT (1=yes/0=NO).
+
+    Returns
+    -------
+    Molecule
+        A Molecule instance initialized with default values.
+    """
     symbols = [''] * natoms
     coordinates = np.zeros((natoms, 3), dtype=np.float64)
     scf_energy = np.zeros((nst), dtype=np.float64)
@@ -157,6 +246,28 @@ def create_empty_molecule(natoms, nst, spin_flip):
     return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity, masses=masses)
 
 def initialize_structure(nst, spin_flip,mult):
+    """
+    Reads molecular structure data from a file and initializes a molecule instance.
+
+    Parameters
+    ----------
+    nst : int
+        Number of SCF states.
+    spin_flip : int
+        Indicator for inclusion of Spin-Flip DFT (1=yes/0=NO).
+    mult : int
+        Initial multiplicity setting.
+
+    Functions
+    ---------
+    
+    setup_masses - init.py
+
+    Returns
+    -------
+    Molecule
+        A Molecule instance with attributes initialized based on file data.
+    """ 
     file_path = "Geometry"  # Updated file path
 
     with open(file_path, 'r') as file:
@@ -201,6 +312,38 @@ def initialize_structure(nst, spin_flip,mult):
     return molecule
 
 def create_molecule(reps, natoms, nst, spin_flip):
+    """
+    Wrapper function for molecule creation with optional structure reading.
+
+    This function utilizes the `create_empty_molecule` function to create 
+    a new Molecule instance with default attributes when `reps` is None. 
+    If `reps` is provided, it calls `initialize_structure` to read data 
+    from the "Geometry" file to initialize the molecule attributes.
+
+
+    Parameters
+    ----------
+    reps : any
+        Input to determine whether to initialize structure from a file.
+    natoms : int
+        Number of atoms in the molecule.
+    nst : int
+        Number of SCF states.
+    spin_flip : int
+        Spin flip indicator.
+
+    Functions
+    ---------
+
+    create_empty_molecule - init.py
+
+    initialise_structure - init.py    
+    
+    Returns
+    -------
+    Molecule
+        A Molecule instance created with either default or file-based attributes.
+    """
     if reps is None:
         # If reps is None, create an empty molecule
         return create_empty_molecule(natoms, nst, spin_flip)
@@ -209,7 +352,19 @@ def create_molecule(reps, natoms, nst, spin_flip):
         return initialize_structure(nst, spin_flip)
 
 def setup_masses(symbols):
-    
+    """
+    Returns atomic masses for a given set of symbols and converts from atomic mass to atomic mass units (amu).
+
+    Parameters
+    ----------
+    symbols : list[str]
+        List of chemical symbols representing the molecule.
+
+    Returns
+    -------
+    np.ndarray
+        Array of atomic masses for the specified symbols in amu.
+    """
     ATOMIC_MASSES = {
         'H': 1, 'He': 4, 'Li': 7, 'Be': 9, 'B': 11, 'C': 12, 'N': 14, 'O': 16, 'F': 19, 'Ne': 20,
         'Na': 23, 'Mg': 24, 'Al': 27, 'Si': 28, 'P': 31, 'S': 32, 'Cl': 35, 'Ar': 40, 'K': 39, 'Ca': 40,
