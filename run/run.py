@@ -120,7 +120,7 @@ if __name__=="__main__":
         file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=4G,h_rt=6:00:00 \n")
+        f.write("#$ -l h_vmem=8G,h_rt=15:00:00 \n")
         f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
         f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
@@ -130,7 +130,7 @@ if __name__=="__main__":
             f.write("module load test qchem \n")
             f.write("module load qchem \n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
+            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz -C $TMPDIR/qchemlocal\n')
             f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')

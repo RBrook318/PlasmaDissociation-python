@@ -1,23 +1,24 @@
 {
     "setup":{
-        "Runfolder":"i-isomer-1000K(30)",
-        "repeats":100,
+        "Runfolder":"methane-test",
+        "repeats":1,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
         "Geom_flg":0,
-        "Molecule":"i-isomer-1000K",
-        "States":2,
+        "Molecule":"Methane",
+        "States":1,
+        "Multiplicity":3,
         "Temp":1000,
         "Cutoff": 1,
         "Branches":0,
-        "Timestep":30,
-        "Tot_timesteps":700,
+        "Timestep":10,
+        "Tot_timesteps":0,
         "Geom_start":1,
         "Spin_flip":0,
-        "method": "QChem",
+        "method": "PySCF",
         "GPU": 0
     }
 

@@ -8,7 +8,7 @@ import output as out
 import result
 import json
 import time 
-import qchem as qc
+
 
 start_time = time.time()
 if __name__ == "__main__":
@@ -20,6 +20,7 @@ if __name__ == "__main__":
     ncpu=inputs["setup"]["cores"]
     nstates=inputs["run"]["States"]
     nbranch=inputs["run"]["Branches"]
+    mult = inputs["run"]["Mult"]
     increment=inputs["run"]["Timestep"]
     endstep=inputs["run"]["Tot_timesteps"]
     geom_start=inputs["run"]["Geom_start"]
@@ -44,7 +45,7 @@ if __name__ == "__main__":
          restart='NO'
 
 if(restart == 'NO'):    
-    molecule1 = init.initialize_structure(nstates,spin_flip)
+    molecule1 = init.initialize_structure(nstates,spin_flip,mult)
     n = len(molecule1.symbols)
     molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
     molecule1 = elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip,method, Guess=False)
@@ -61,7 +62,7 @@ elif(restart == 'YES'):
         Guess = False
         molecule1 =elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
     else:
-        molecule1 = init.initialize_structure(nstates,spin_flip)
+        molecule1 = init.initialize_structure(nstates,spin_flip,mult)
         n = len(molecule1.symbols)
         molecule2 = init.create_empty_molecule(n,nstates,spin_flip)
         molecule1 = elec.run_elec_structure(molecule1, ncpu,n,nstates,spin_flip, method,Guess=False)
@@ -81,9 +82,10 @@ for i in range(int(startstep), endstep+1):
         Guess = True
     else:
         Guess = False
-result.process_results()
-end_time=time.time()
+end_time=time.time()  
 with open("output/time.out", "w") as time:
     time.write(f"{(end_time-start_time)/3600}\n")
     time.write(f"{(end_time-start_time)/60}\n")
     time.write(f"{(end_time-start_time)}\n")
+result.process_results()
+
