@@ -10,6 +10,8 @@ from collections import defaultdict
 import graphs as grph
 
 def process_results():
+    # 0. Increment count file
+    track_completed_trajectory()
     # 1.read in the bonding array
     bondarr = read_bondarr()
     # # 2. detect dissociation
@@ -399,4 +401,24 @@ def write_graphs_json():
     with open('../results/graphs_config.json', 'w') as json_file:
         json.dump(config, json_file, indent=4)
 
-        
+def track_completed_trajectory():
+    # Path to the tracking file
+    tracking_file = '../results/completed_trajectories.txt'
+    
+    # Initialize count if file doesn't exist
+    if not os.path.exists(tracking_file):
+        with open(tracking_file, 'w') as f:
+            f.write("0")
+    
+    # Read the current count
+    with open(tracking_file, 'r') as f:
+        count = int(f.read().strip())
+    
+    # Increment the count
+    count += 1
+    
+    # Write the updated count back to the file
+    with open(tracking_file, 'w') as f:
+        f.write(str(count))
+    
+    print(f"Trajectory completion recorded. Total completed: {count}")

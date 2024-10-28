@@ -141,7 +141,8 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
         velocities[i,:] = shrunk_molecule.momenta[i,:]/shrunk_molecule.masses[i]
     
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
-
+    print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20).shape)
+    print("amplitudes shape after reshape:", amplitudes.reshape(-1, 1).shape)
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), amplitudes.reshape(-1, 1))
 
     Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,Coupling,nst)/10

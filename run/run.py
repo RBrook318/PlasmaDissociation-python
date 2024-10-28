@@ -69,6 +69,8 @@ if __name__=="__main__":
     EXDIR1=EXDIR+"/"+inputs["setup"]["Runfolder"]  
     os.mkdir(EXDIR1+"/results")
     os.mkdir(EXDIR1+"/results/bonds")
+    with open(EXDIR1+"/results/bonds/allbonds.out", 'w'):
+        pass
     os.mkdir(EXDIR1+"/results/specifics")
     os.mkdir(EXDIR1+"/results/graphs")
     os.mkdir(EXDIR1+"/setup")

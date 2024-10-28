@@ -4,7 +4,7 @@ import os
 from pyscf import gto, scf, dft, grad, lib, hessian
 # from pyscf.geomopt.geometric_solver import optimize
 # from pyscf.prop.freq import rks as freq
-from gpu4pyscf.dft import rks, uks
+
 
 def create_pyscf_molecule(molecule):
     """
@@ -49,7 +49,7 @@ def run_pyscf_calculation(mol, scf_algorithm='DIIS', prev_mf=None):
     mf.conv_tol = 1e-8
     mf.conv_tol_grad = 1e-7
     mf.max_cycle = 500
-    mf.verbose = 4
+    mf.verbose = 3
     
     # Restart from a previous mean-field solution if available
     if prev_mf is not None:
@@ -131,6 +131,7 @@ def initial_conditions(symbols, coords):
     return geom_opt, freq
 
 def run_pyscf_calculation_gpu(mol, scf_algorithm='DIIS', prev_mf=None):
+    from gpu4pyscf.dft import rks, uks
     """
     Run a PySCF SCF calculation on the GPU.
     :param mol: A PySCF molecule object.

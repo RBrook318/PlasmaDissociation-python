@@ -1,7 +1,7 @@
 {
     "setup":{
         "Runfolder":"methane-test",
-        "repeats":1,
+        "repeats":2,
         "cores":8,
         "restart":"NO",
         "initre":0
@@ -10,12 +10,12 @@
         "Geom_flg":0,
         "Molecule":"Methane",
         "States":1,
-        "Multiplicity":3,
+        "Multiplicity":1,
         "Temp":1000,
         "Cutoff": 1,
         "Branches":0,
         "Timestep":10,
-        "Tot_timesteps":0,
+        "Tot_timesteps":3,
         "Geom_start":1,
         "Spin_flip":0,
         "method": "PySCF",

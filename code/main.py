@@ -20,7 +20,7 @@ if __name__ == "__main__":
     ncpu=inputs["setup"]["cores"]
     nstates=inputs["run"]["States"]
     nbranch=inputs["run"]["Branches"]
-    mult = inputs["run"]["Mult"]
+    mult = inputs["run"]["Multiplicity"]
     increment=inputs["run"]["Timestep"]
     endstep=inputs["run"]["Tot_timesteps"]
     geom_start=inputs["run"]["Geom_start"]
