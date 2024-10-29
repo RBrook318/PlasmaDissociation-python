@@ -1,10 +1,45 @@
+"""
+Propagator Module for Molecular Dynamics Simulations
+
+This module contains functions for propagating the molecular system over time,
+including applying Magnus expansion, calculating force vectors, and handling dissociation events.
+
+Functions:
+---------
+- CompForceEhr: Computes the Ehrenfest force vector based on amplitudes, forces, energies, and couplings.
+- magnus2: Computes the Magnus expansion for a given Hamiltonian and time step.
+- exp_matrix: Evaluates the matrix exponential, supporting a scaling factor.
+- calculate_electronic_hamiltonian: Computes the electronic Hamiltonian matrix based on molecule energy and velocities.
+- shrink_molecule: Reduces molecule size by removing dissociated atoms.
+- restore_molecule: Restores the molecule to its original form after processing.
+- prop_1: Propagates the molecular system using a modified first-order Magnus expansion method.
+- prop_2: Propagates the molecular system with a second-order Magnus expansion, adjusting energy and forces iteratively.
+- fragments: Identifies fragments of the molecule and adjusts the spin if necessary.
+- prop_diss: Propagates dissociated atoms by moving them based on their velocities.
+
+"""
+
 import numpy as np
 from scipy.linalg import expm
+
 
 
 np.set_printoptions(precision=30)
 
 def CompForceEhr(A, F, E, C,nst):
+    """
+    Computes the Ehrenfest force vector using state amplitudes, forces, and couplings.
+    
+    Parameters:
+    - A : Array of amplitudes.
+    - F : Array of forces.
+    - E : Array of energies.
+    - C : Coupling constant.
+    - nst : Number of states.
+    
+    Returns:
+    - ForceVector : Calculated Ehrenfest force vector.
+    """
     ndim = F.shape
     ForceVector = np.zeros(ndim, dtype=np.float64)
     f1 = np.zeros(ndim, dtype=np.float64)
@@ -31,6 +66,9 @@ def magnus2(H0, H1, dt):
     - H0, H1: 2D NumPy arrays representing the Hamiltonians.
     - dt: Time step.
 
+    Functions:
+    - exp_matrix - prop.py
+
     Returns:
     - magH: Resulting Magnus expansion matrix.
     """
@@ -52,6 +90,26 @@ def magnus2(H0, H1, dt):
     return magH
 
 def exp_matrix(A, t_in=None):
+    """
+    Computes the matrix exponential, optionally scaled by a given factor.
+
+    Parameters:
+    ----------
+    - A : np.ndarray
+        The square matrix to exponentiate.
+    - t_in : float, optional
+        Scaling factor for the exponentiation. Defaults to 1.0 if not provided.
+
+    Returns:
+    -------
+    - expA : np.ndarray
+        The matrix exponential of A scaled by t_in.
+
+    Notes:
+    -----
+    Uses the SciPy `expm` function unless the input matrix is near zero, 
+    in which case an identity matrix is returned.
+    """
     m = A.shape[0]
     expA = np.zeros((m, m), dtype=np.complex256)
 
@@ -68,6 +126,29 @@ def exp_matrix(A, t_in=None):
     return expA
 
 def calculate_electronic_hamiltonian(molecule, velocities, coupling):
+    """
+    Calculates the electronic Hamiltonian for a molecular system, 
+    incorporating energy shifts and velocity-dependent couplings.
+
+    Parameters:
+    ----------
+    - molecule : object
+        Molecular object containing SCF energy values.
+    - velocities : np.ndarray
+        Array of velocities for each atom.
+    - coupling : np.ndarray
+        Coupling matrix between states.
+
+    Returns:
+    -------
+    - electronic_hamiltonian : np.ndarray
+        The computed electronic Hamiltonian matrix.
+
+    Notes:
+    -----
+    The diagonal elements are the SCF energies shifted by a constant (77.67785291), 
+    while the off-diagonal elements represent velocity-coupling terms.
+    """
     nst = len(molecule.scf_energy)
     ii = 1j  # imaginary unit
 
@@ -82,7 +163,29 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     return electronic_hamiltonian
 
 def shrink_molecule(molecule):
+    """
+    Reduces a molecule by removing atoms marked for dissociation, 
+    returning a copy of the molecule with only the remaining atoms.
 
+    Parameters:
+    ----------
+    - molecule : object (molecule class)
+        Molecular object containing attributes such as symbols, coordinates, and momenta,
+        with dissociation flags marking atoms to be removed.
+
+    Returns:
+    -------
+    - shrunk_molecule : object (molecule class)
+        Copy of the original molecule with dissociated atoms removed.
+    - shrunk_index : list of int
+        List of indices corresponding to retained atoms.
+
+    Notes:
+    -----
+    This function creates a copy of the input molecule and removes atoms flagged 
+    for dissociation. The `shrunk_index` can later be used to map back to the 
+    original molecule's indexing.
+    """
     natoms = len(molecule.symbols)
     dis_index = []
     shrunk_index = []
@@ -107,8 +210,37 @@ def shrink_molecule(molecule):
     return shrunk_molecule, shrunk_index
 
 def restore_molecule(molecule, shrunk_molecule, shrunk_index):
-    # Make sure the lengths match
 
+    """
+    Restores atoms and properties to a molecule from a shrunk version, 
+    based on the specified index mapping. Used at the end of a prop step 
+    to update a full molecule after it was shrunk.
+
+    Parameters:
+    ----------
+    - molecule : object
+        The original molecule object to be restored, containing all atoms and properties.
+    - shrunk_molecule : object
+        The modified molecule object with dissociated atoms removed.
+    - shrunk_index : list of int
+        List of indices mapping the shrunk molecule's atoms back to the original molecule.
+
+    Returns:
+    -------
+    - molecule : object
+        The restored molecule with updated symbols, coordinates, momenta, and other properties.
+
+    Raises:
+    ------
+    - ValueError
+        If any index in `shrunk_index` is out of bounds for the original molecule.
+
+    Notes:
+    -----
+    This function updates the molecule's symbols, coordinates, and momenta using 
+    data from the shrunk molecule based on `shrunk_index`. Other properties such 
+    as SCF energy, forces, amplitudes, and timestep are also restored.
+    """
     for i, index in enumerate(shrunk_index):
         if index < 0 or index >= len(molecule.symbols):
             raise ValueError(f"Invalid index: {index}")
@@ -126,6 +258,52 @@ def restore_molecule(molecule, shrunk_molecule, shrunk_index):
     return molecule
 
 def prop_1(molecule1, molecule2, natoms, nst, increment):
+    """
+    Propagates molecular amplitudes, coordinates, and momenta over a time increment,
+    considering forces and velocities based on current state information.
+
+    Parameters:
+    ----------
+    - molecule1 : object
+        Input molecule object representing the initial molecular state.
+    - molecule2 : object
+        Second molecule object to receive updated properties after propagation.
+    - natoms : int
+        Number of atoms in the molecule.
+    - nst : int
+        Number of states in the electronic Hamiltonian.
+    - increment : float
+        Time step over which propagation occurs.
+
+    Returns:
+    -------
+    - molecule2 : object
+        Updated molecule object with propagated properties.
+
+    Functions:
+    ---------
+    - `shrink_molecule(molecule)` : -prop.py
+        Shrinks a molecule to exclude atoms marked for dissociation.
+
+    - `restore_molecule(molecule, shrunk_molecule, shrunk_index)` : -prop.py
+        Restores the molecule to its original full form after propagation.
+
+    - `calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)` : - prop.py
+        Calculates the electronic Hamiltonian.
+
+    - `magnus2(ham_1, ham_2, increment)` : - prop.py
+        Calculates time evolution of electronic amplitudes using the Magnus expansion.
+
+    - `CompForceEhr(amplitudes, forces, scf_energy, Coupling, nst)` : -prop.py
+        Computes the Ehrenfest forces for the system.
+
+    Notes:
+    -----
+    This function calculates molecular velocities, electronic Hamiltonian, and 
+    force vectors to update the amplitudes and forces over a set time increment. 
+    Uses intermediate computations for accurate propagation, storing results in 
+    temporary molecule `molecule2`.
+    """
     amplitudes = molecule1.amplitudes
     velocities = np.zeros((natoms,3))
     forces_1 = molecule1.forces
@@ -167,7 +345,52 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     return molecule2
 
 def prop_2(molecule1, molecule2, natoms, nst, increment):
-    ndim = natoms*3
+    """
+    Interpolates properties between two molecular states and propagates 
+    amplitudes, energy, and forces based on electronic Hamiltonians and couplings.
+
+    Parameters:
+    ----------
+    - molecule1 : object
+        Initial molecular state to propagate.
+    - molecule2 : object
+        Secondary molecule object used for interpolation.
+    - natoms : int
+        Number of atoms in the molecule.
+    - nst : int
+        Number of states in the electronic Hamiltonian.
+    - increment : float
+        Time step over which propagation occurs.
+
+    Returns:
+    -------
+    - molecule1 : object
+        Updated molecule object with propagated properties.
+
+    Functions:
+    ---------
+    - `shrink_molecule(molecule)` : - prop.py
+        Shrinks a molecule to exclude atoms marked for dissociation.
+
+    - `restore_molecule(molecule, shrunk_molecule, shrunk_index)` : - prop.py
+        Restores the molecule to its original full form after propagation.
+
+    - `calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)` : -prop.py
+        Calculates the electronic Hamiltonian.
+
+    - `magnus2(ham_1, ham_2, increment)` : - prop.py
+        Calculates time evolution of electronic amplitudes using the Magnus expansion.
+
+    - `CompForceEhr(amplitudes, forces, scf_energy, Coupling, nst)` : - prop.py
+        Computes the Ehrenfest forces for the system.
+
+    Notes:
+    -----
+    Uses the shrunk versions of the molecules to calculate interpolated velocities, 
+    energy, forces, and electronic Hamiltonians. The force vector is averaged over 
+    intermediate steps and applied to propagate the state of `molecule1`.
+    """
+
     velocities_1 = np.zeros((natoms,3))
     velocities_2 = np.zeros((natoms,3))
 
@@ -235,6 +458,41 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     return molecule1
 
 def fragements(molecule,spin_flip):
+    """
+    Analyzes and marks atoms in a molecule that meet dissociation criteria and
+    updates multiplicity based on the presence of a spin flip.
+
+    Parameters:
+    ----------
+    - molecule : object
+        The molecular object representing atomic and molecular states.
+    - spin_flip : int
+        Indicates whether spin flip is to be applied: 
+        1 to increase multiplicity, 0 to decrease if certain conditions are met.
+
+    Returns:
+    -------
+    - molecule : object
+        Updated molecule object with dissociation flags set for atoms meeting
+        dissociation criteria.
+    - dissociated : int
+        Indicator of whether any atoms were marked as dissociated (1 for true, 0 for false).
+
+    Functions:
+    ---------
+    - `np.delete(array, index)` :
+        Removes elements from an array based on specified indices.
+    - `sqrt` and `sum` :
+        Used to calculate force magnitude, checking against the dissociation threshold.
+
+    Notes:
+    -----
+    This function iterates over atoms with no dissociation flags, checking if their 
+    forces are below the defined threshold to mark them as dissociated. Based on 
+    dissociation, it updates the molecular multiplicity, applying the spin flip if 
+    required.
+    """
+
     natom = len(molecule.symbols)
     molecules_with_no_flag = [i for i in range(1, natom + 1) if molecule.dissociation_flags[i - 1] == 'NO']
 
@@ -264,10 +522,33 @@ def fragements(molecule,spin_flip):
     return molecule, dissociated
 
 def prop_diss(molecule, increment): 
+    """
+    Propagates coordinates of dissociated atoms based on their velocities, updating their
+    positions over the specified time increment.
+
+    Parameters:
+    ----------
+    - molecule : object
+        The molecular object, containing current atom positions, velocities, and masses.
+    - increment : float
+        Time step used to propagate dissociated atoms’ coordinates.
+
+    Returns:
+    -------
+    - molecule : object
+        Updated molecule object with propagated coordinates for dissociated atoms.
+
+
+    Notes:
+    -----
+    This function calculates the velocity of atoms marked as dissociated and uses these
+    to propagate their positions over the time increment. Positions are updated only for
+    atoms with dissociation flags set to 'YES'.
+    """
     natoms = len(molecule.symbols)
     dis_index = []
     shrunk_index = []
-    Mau = 1822.887
+
 
     for i in range(natoms): 
         if molecule.dissociation_flags[i] == 'YES':
