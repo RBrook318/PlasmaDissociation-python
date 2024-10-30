@@ -295,7 +295,8 @@ def initialize_structure(nst, spin_flip,mult):
         amplitudes_lines = lines[2*natoms+2:]  # Assuming amplitudes are two lines below "momentum"
         amplitudes = list(map(float, amplitudes_lines))
     else: 
-        amplitudes = [1.0, 0.0]
+        amplitudes = np.zeros((nst), dtype=np.complex256)
+        amplitudes[0] = 1 + 0j
 
     if spin_flip == 1:
         multiplicity = mult+2

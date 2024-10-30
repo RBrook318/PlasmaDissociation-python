@@ -9,7 +9,7 @@
     "run":{
         "Geom_flg":0,
         "Molecule":"Methane",
-        "States":2,
+        "States":1,
         "Multiplicity":1,
         "Temp":1000,
         "Cutoff": 1,
