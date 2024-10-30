@@ -1,5 +1,43 @@
 # Qchem.py 15/11/2023
+"""
+QChem.py
 
+This module provides functions to set up, run, and parse electronic structure calculations using QChem. It includes 
+support for standard and spin-flip SCF calculations, geometry optimization, and normal mode analysis. This file is 
+primarily used in conjunction with molecular dynamics simulations that require quantum chemical force calculations.
+
+Dependencies:
+- pyqchem
+- numpy
+- math
+- os
+
+Functions:
+----------
+file_contains_string(file_path: str, search_string: str) -> bool
+    Checks if a specified string exists within a given file.
+
+create_qchem_input(molecule: Structure, spin_flip: int, scf_algorithm: str = "DIIS", Guess: bool = True) -> QchemInput
+    Generates a QChem input object based on molecule data, SCF algorithm, and spin-flip specification.
+
+run_qchem(ncpu: int, molecule: Structure, n: int, nstates: int, spin_flip: int, Guess: bool = True) -> Structure
+    Executes QChem calculation, updates molecule with electronic structure coefficients, and handles potential SCF 
+    algorithm errors by retrying with alternative settings.
+
+readqchem(output: str, molecule: Structure, natoms: int, nst: int, spin_flip: int) -> None
+    Parses QChem output for total energy and forces, updating the molecule's energy and force attributes.
+
+initial_conditions(symbols: list, coords: np.ndarray, cores: int) -> tuple
+    Performs geometry optimization and normal mode analysis, outputting optimized geometry and frequency data.
+
+Usage:
+------
+This module is intended to be imported into larger simulation scripts where QChem-based calculations are needed.
+To perform an electronic structure calculation, set up a `molecule` object with required properties and call
+`run_qchem` with the desired options.
+
+
+"""
 import os
 import numpy as np 
 import math
@@ -13,6 +51,21 @@ np.set_printoptions(precision =30)
 # Electronic structure via QChem.
         
 def file_contains_string(file_path, search_string):
+    """
+    Checks if a specified string exists within a file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the file to be checked.
+    search_string : str
+        The string to search for within the file.
+
+    Returns
+    -------
+    bool
+        True if the search_string is found in the file, False otherwise.
+    """
     with open(file_path, "r") as file:
         for line in file:
             if search_string in line:
@@ -20,7 +73,32 @@ def file_contains_string(file_path, search_string):
     return False
 
 def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
-    
+    """
+    Generates a QChem input configuration for an SCF calculation based on 
+    molecular data, SCF algorithm, and spin-flip configuration.
+
+    Parameters
+    ----------
+    molecule : Structure
+        A molecule structure with coordinates, symbols, and multiplicity set.
+    spin_flip : int
+        Indicates whether to use spin-flip (1) or standard (0) DFT calculations.
+    scf_algorithm : str, optional
+        The SCF convergence algorithm, by default "DIIS".
+    Guess : bool, optional
+        Whether to include initial SCF coefficients as the guess, by default True.
+
+    Returns
+    -------
+    QchemInput
+        A QChem input object with settings for the requested calculation type.
+
+    Notes
+    -----
+    - When spin_flip is set to 1, additional parameters for spin-flip are 
+      included in the input. If `Guess` is True, initial SCF coefficients 
+      are included in the input for a better starting guess.
+    """
     # Filter indices based on dissociation flag
     active_indices = [i for i, flag in enumerate(molecule.dissociation_flags) if flag == 'NO']
     active_coords = [molecule.coordinates[i] for i in active_indices]
@@ -86,7 +164,39 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
        
     return qc_inp
                       
-def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True): 
+def run_qchem(ncpu, molecule, nstates, spin_flip, Guess=True): 
+    """
+    Executes a QChem job to calculate the electronic structure for a given molecule
+    and updates its properties based on the computed results.
+
+    Parameters
+    ----------
+    ncpu : int
+        The number of processors to use for the QChem calculation.
+    molecule : Structure
+        The molecular structure object with attributes such as coordinates, symbols, 
+        and dissociation flags.
+    nstates : int
+        Number of electronic states to consider in the calculation.
+    spin_flip : int
+        Indicates whether spin-flip (1) or standard (0) calculations are used.
+    Guess : bool, optional
+        Whether to include an initial guess for SCF coefficients, by default True.
+
+    Returns
+    -------
+    Structure
+        The molecule object with updated electronic properties and forces.
+
+    Notes
+    -----
+    - The function first attempts a QChem calculation using the 'DIIS' algorithm.
+      If this fails, it retries with the 'DIIS_GDM' algorithm.
+    - If both attempts fail, an error message is logged to the "ERROR" file, and the 
+      program exits.
+    - Upon successful completion, forces and energy data are extracted from the QChem 
+      output, which is then passed to the `readqchem` function for detailed parsing.
+    """
     qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
     try:
         output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
@@ -104,14 +214,37 @@ def run_qchem(ncpu, molecule, n, nstates, spin_flip, Guess=True):
                 file.write(output)
             exit()
     # Job completed successfully
-    readqchem(output, molecule, n, nstates,spin_flip)
+    readqchem(output, molecule,nstates,spin_flip)
     # Append f.out content to f.all
     # with open("f.all", "a") as f_all:
     #     f_all.write(output)
     return molecule
 
 
-def readqchem(output, molecule, natoms, nst,spin_flip):
+def readqchem(output, molecule, nst,spin_flip):
+
+    """
+    Parses QChem output to extract the SCF energy and gradient forces for a given molecule,
+    and updates the molecule’s attributes accordingly.
+
+    Parameters
+    ----------
+    output : str
+        The raw output string from a QChem calculation.
+    molecule : Structure
+        The molecule object whose SCF energy and forces are to be updated.
+    nst : int
+        The number of states being considered.
+    spin_flip : int
+        Indicates if spin-flip calculations (1) or standard (0) calculations are used.
+
+    Notes
+    -----
+    - Extracts either the SCF energy or state-specific energy from the QChem output 
+      depending on the calculation type.
+    - Parses the gradient forces and updates the molecule's forces attribute.
+    - Forces are formatted to avoid any negative zeros by replacing them with zeros.
+    """
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     ndim = 3 * reduced_natoms
     if spin_flip==1:
@@ -147,6 +280,33 @@ def readqchem(output, molecule, natoms, nst,spin_flip):
     molecule.update_forces(f)
 
 def initial_conditions(symbols,coords,cores):
+    """
+    Generates initial conditions for a molecule by optimizing its geometry 
+    and calculating vibrational modes using QChem.
+
+    Parameters
+    ----------
+    symbols : list of str
+        Atomic symbols of the atoms in the molecule.
+    coords : list of list of float
+        Atomic coordinates for each atom in the molecule.
+    cores : int
+        The number of cores to use for QChem calculations.
+
+    Returns
+    -------
+    opt_geoms : Structure
+        The optimized molecular geometry as a Structure object.
+    parser_output : dict
+        Parsed vibrational frequency data from the QChem frequency calculation.
+
+    Notes
+    -----
+    - First runs a geometry optimization calculation for the molecule, saving output to 
+      'optimisation.out'.
+    - Then performs a vibrational frequency calculation and saves the output to 'modes.out'.
+    - Utilizes basic_optimization and basic_frequencies parsers to interpret QChem output.
+    """
     molecule = Structure(coordinates=coords, symbols=symbols, multiplicity=1)
     qc_inp = QchemInput(molecule,
                         jobtype='opt',

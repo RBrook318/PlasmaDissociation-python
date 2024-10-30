@@ -29,6 +29,19 @@ def process_results():
     grph.create_graphs()
 
 def read_bondarr():
+    """
+    Load the bonding array from a specified file.
+
+    Parameters:
+    ----------
+    file_path : str
+        Path to the bonding array file containing bond information.
+
+    Returns:
+    -------
+    bonds : list
+        A list of bond entries, each representing a bond event in the array.
+    """
     bondarr = {}
     with open('../results/bondarr.txt', 'r') as file:
         for line in file:
@@ -44,6 +57,35 @@ def read_bondarr():
 
 def detect_dissociation(bondarr):
 
+    """
+    Detects bond dissociations in molecular dynamics data based on atomic distances.
+
+    This function reads atomic positions over time from the `xyz.all` file, iterating 
+    through each timestep and calculating the distances between specified bonded pairs 
+    of atoms. If a bond's distance exceeds a defined threshold (5.0 units), it logs the 
+    dissociation event along with the bond type in the `dissociation.out` file. 
+    Each bond dissociation is recorded only once per simulation run to prevent duplicate entries.
+
+    Parameters:
+    -----------
+    bondarr : dict
+        A dictionary where each key is a tuple of atom indices (i, j) representing a bonded pair, 
+        and the value is a string describing the bond type.
+
+    Outputs:
+    --------
+    Writes bond dissociation events to `dissociation.out` with details on the timestep, 
+    broken bond, and bond type.
+
+    Notes:
+    ------
+    - The dissociation threshold is set at 5.0 units by default.
+    - Only dissociations not previously recorded are logged to avoid duplicates.
+
+    Example Entry in `dissociation.out`:
+    ------------------------------------
+    "Dissociation detected at timestep 100.0, Broken bond: 1-2:C-C"
+    """
     # Read the input data from a file
     with open('output/xyz.all', 'r') as f:
         lines = f.readlines()
@@ -80,7 +122,43 @@ def detect_dissociation(bondarr):
                 atoms[atom_num] = atom_info
 
 def compile_results():
+    """
+    Compiles dissociation results from the `dissociation.out` file and logs them into 
+    a summary file along with bond-specific files.
 
+    This function reads dissociation events from the `dissociation.out` file, checks for 
+    any detected dissociations, and appends the results to a collated summary file 
+    (`collated_diss.txt`). It also generates bond-type-specific output files for each 
+    bond type found in the dissociation events and a general file for all bonds.
+
+    The results are structured as follows:
+    - If dissociations are detected, the details are appended to the summary file with 
+      the current run number.
+    - If no dissociations are found, an entry indicating this is logged in the summary file.
+    - For each dissociation event, the timestep is logged in both bond-type-specific files 
+      and an "all bonds" file.
+
+    Outputs:
+    --------
+    - Appends to `../results/collated_diss.txt` to summarize dissociation events.
+    - Creates or appends to bond-type-specific output files in `../results/bonds/` 
+      for each detected bond type and an "allbonds.out" file.
+
+    Notes:
+    ------
+    - The run number is extracted from the current working directory.
+    - Each output file will be appended to, preserving previous entries.
+
+    Example Entry in `collated_diss.txt`:
+    ---------------------------------------
+    "--- run-1 ---\n"
+    "Dissociation detected at timestep 100.0, Broken bond: 1-2:C-C\n"
+    "----------------------------------------\n"
+
+    Example Entry in bond-type-specific file:
+    -------------------------------------------
+    "100\n"  # Timestep indicating when the bond was broken
+    """
     
     with open('output/dissociation.out', "r") as f:
         lines = f.readlines()
@@ -123,6 +201,40 @@ def compile_results():
 
 
 def fragments():
+    """
+    Analyzes the molecular structure from a JSON file to identify and categorize fragments 
+    based on atomic connectivity and distances.
+
+    This function reads atomic coordinates and symbols from a molecule JSON file, calculates 
+    distances between atoms, and constructs a graph to identify connected fragments. It then 
+    determines the molecular formula for each fragment and logs the results into an output file.
+
+    The process involves the following steps:
+    1. Load the molecule data from 'output/molecule.json'.
+    2. Calculate pairwise distances between atoms and create a connectivity graph.
+    3. Identify connected components (fragments) in the graph.
+    4. For each connected fragment, compute the molecular formula, organized by 
+       Carbon (C), Fluorine (F), Hydrogen (H), and Oxygen (O) counts. (SHOULD ADD Si SOON)
+    5. Handle isolated atoms as individual fragments and compute their formulas.
+    6. Write the fragment formulas and their counts to 'output/fragments.out'.
+
+    Outputs:
+    --------
+    - Writes to 'output/fragments.out', detailing each unique fragment formula and its count.
+
+    Example Output in `fragments.out`:
+    -----------------------------------
+    Fragment Formulas:
+    C3H8: 2
+    C2H4: 1
+    O: 1
+    F2: 1
+
+    Notes:
+    ------
+    - Distances less than 5.0 units are considered to indicate a bond between atoms.
+    - The molecular formula is constructed in the order of C, F, H, and O.
+    """
     molecule= Molecule.from_json('output/molecule.json')
     coordinates = molecule.coordinates
     fragment_formulas = {} 
@@ -219,6 +331,29 @@ def combine_fragments():
         shutil.copy2("output/fragments.out","../results")
 
 def combine_fragment_counts(file1, file2, output_file):
+    """
+    Combines fragment counts from two files and writes the results to an output file.
+
+    This function reads fragment counts from two specified input files, combines the counts 
+    for each unique fragment formula, and writes the combined counts to a specified output file.
+
+    Parameters:
+    -----------
+    file1 : str
+        Path to the first input file containing fragment counts.
+
+    file2 : str
+        Path to the second input file containing fragment counts.
+
+    output_file : str
+        Path to the output file where combined fragment counts will be written.
+
+    Notes:
+    ------
+    - Assumes that each input file has a consistent format with fragment formulas and counts 
+      listed in a specific manner.
+    - Uses helper functions to read counts, combine them, and write the output.
+    """
     # Read fragment counts from the first file
     fragment_formulas1 = read_fragment_counts(file1)
 
@@ -232,6 +367,27 @@ def combine_fragment_counts(file1, file2, output_file):
     write_fragment_counts(output_file, combined_fragment_formulas)
 
 def read_fragment_counts(file_path):
+    """
+    Reads fragment counts from a specified file.
+
+    This function parses the input file to extract fragment formulas and their associated 
+    counts, returning them as a dictionary.
+
+    Parameters:
+    -----------
+    file_path : str
+        Path to the input file containing fragment counts.
+
+    Returns:
+    --------
+    dict
+        A dictionary where keys are fragment formulas (str) and values are their counts (int).
+
+    Notes:
+    ------
+    - The function skips the first line of the file, assuming it contains a header or title.
+    - Each subsequent line is expected to be in the format 'formula: count'.
+    """
     fragment_formulas = {}
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -247,6 +403,30 @@ def read_fragment_counts(file_path):
     return fragment_formulas
 
 def combine_counts(counts1, counts2):
+    """
+    Combines two dictionaries of fragment counts.
+
+    This function takes two dictionaries containing fragment formulas as keys and their counts 
+    as values, merging them into a single dictionary with combined counts.
+
+    Parameters:
+    -----------
+    counts1 : dict
+        The first dictionary of fragment formulas and counts.
+
+    counts2 : dict
+        The second dictionary of fragment formulas and counts.
+
+    Returns:
+    --------
+    dict
+        A dictionary containing the combined fragment formulas and their counts.
+
+    Notes:
+    ------
+    - If a formula appears in both dictionaries, its counts are summed.
+    - If a formula appears only in one dictionary, it is included in the output as is.
+    """
     combined_counts = counts1.copy()
     for formula, count in counts2.items():
         if formula in combined_counts:
@@ -256,6 +436,25 @@ def combine_counts(counts1, counts2):
     return combined_counts
 
 def write_fragment_counts(file_path, fragment_formulas):
+    """
+    Writes fragment formulas and their counts to a specified output file.
+
+    This function takes a dictionary of fragment formulas and their counts, sorts them in 
+    descending order based on the counts, and writes the sorted results to the specified file.
+
+    Parameters:
+    -----------
+    file_path : str
+        Path to the output file where the fragment formulas and counts will be written.
+
+    fragment_formulas : dict
+        A dictionary where keys are fragment formulas (str) and values are their counts (int).
+
+    Notes:
+    ------
+    - The output file will contain a title line followed by the formulas and counts.
+    - The formulas are sorted from most common to least common based on their counts.
+    """
     # Sort fragment formulas based on counts in descending order
     sorted_formulas = sorted(fragment_formulas.items(), key=lambda x: x[1], reverse=True)
 
@@ -268,6 +467,33 @@ import json
 from collections import defaultdict
 
 def write_graphs_json():
+
+    """
+    Generates a JSON configuration for bond graphs and saves it to a file.
+
+    This function reads bond data and molecular geometry from specified files to create a 
+    configuration that describes bond relationships in a molecular structure. It generates 
+    output files for each bond type and saves a JSON configuration that specifies 
+    the relationships and properties of the bonds.
+
+    Process:
+    ---------
+    - Reads bond data from 'bondarr.txt' to categorize bonds by type.
+    - Extracts molecular geometry from a file named 'Geometry'.
+    - Combines bond data specific to carbon atoms and aggregates them into separate files.
+    - Configures and organizes bond types for graph generation, assigning colors for visualization.
+    - Saves the entire configuration as a JSON file for use in graph generation.
+
+    Raises:
+    -------
+    ValueError: If the 'Geometry' file does not contain a 'momentum' line, indicating 
+    that the file does not have the expected format.
+
+    Notes:
+    ------
+    - Assumes the existence of specific directory structures and file formats.
+    - The output files for bond types are written to a results directory specified in the code.
+    """
     bond_counts = defaultdict(list)
 
     # Reading bondarr.txt from ../results/bonds/
@@ -402,6 +628,25 @@ def write_graphs_json():
         json.dump(config, json_file, indent=4)
 
 def track_completed_trajectory():
+    """
+    Tracks the number of completed trajectories by incrementing a count in a text file.
+
+    This function updates a tracking file that maintains a count of how many trajectories 
+    have been completed. It reads the current count from a file, increments it, and writes 
+    the updated count back to the file.
+
+    Process:
+    ---------
+    - If the tracking file does not exist, it initializes the count to zero.
+    - Reads the current count from the file.
+    - Increments the count and updates the file with the new count.
+
+    Notes:
+    ------
+    - The tracking file is named 'completed_trajectories.txt' and is expected to be located 
+      in the '../results/' directory.
+    - The function prints the updated count of completed trajectories for user feedback.
+    """
     # Path to the tracking file
     tracking_file = '../results/completed_trajectories.txt'
     

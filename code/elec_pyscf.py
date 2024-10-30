@@ -8,9 +8,22 @@ from pyscf import gto, scf, dft, grad, lib, hessian
 
 def create_pyscf_molecule(molecule):
     """
-    Create a PySCF molecule object based on the provided molecule data.
-    :param molecule: A molecule object containing symbols, coordinates in Bohr, dissociation flags, etc.
-    :return: A PySCF molecule object.
+    Creates a PySCF molecule object based on the provided molecule data.
+
+    Parameters
+    ----------
+    molecule : Structure
+        A molecule object containing symbols, coordinates in Bohr, dissociation flags, and multiplicity.
+
+    Returns
+    -------
+    mol : PySCF gto.Mole
+        A PySCF molecule object with active atoms included based on dissociation flags.
+
+    Notes
+    -----
+    - Only includes atoms with dissociation flags set to 'NO' for active calculations.
+    - The PySCF molecule is built with '6-31+G*' basis and default Bohr units.
     """
     symbols = molecule.symbols
     coordinates_bohr = molecule.coordinates  # Coordinates in Bohr
@@ -32,11 +45,30 @@ def create_pyscf_molecule(molecule):
 
 def run_pyscf_calculation(mol, scf_algorithm='DIIS', prev_mf=None):
     """
-    Run a PySCF SCF calculation on the given molecule.
-    :param mol: A PySCF molecule object.
-    :param scf_algorithm: SCF algorithm to use (default: 'DIIS').
-    :param prev_mf: A previous mean-field solution to start from, if available.
-    :return: A tuple containing (SCF energy, forces, mean-field object).
+    Runs a PySCF SCF calculation on the given molecule.
+
+    Parameters
+    ----------
+    mol : gto.Mole
+        A PySCF molecule object.
+    scf_algorithm : str, optional
+        SCF algorithm to use, default is 'DIIS'.
+    prev_mf : SCF object, optional
+        Previous mean-field solution for initialization if available.
+
+    Returns
+    -------
+    energy : float
+        The calculated SCF energy.
+    forces : ndarray
+        The calculated nuclear gradients (forces).
+    mf : SCF object
+        The mean-field SCF object with solution information.
+
+    Notes
+    -----
+    - Uses RKS for closed-shell systems and UKS for open-shell.
+    - Supports density fitting and hybrid functional setup for computational efficiency.
     """
 
     # Set the appropriate SCF method based on the spin
@@ -76,9 +108,26 @@ def run_pyscf_calculation(mol, scf_algorithm='DIIS', prev_mf=None):
  
 
 def run_pySCF(molecule,Guess=True,use_gpu = False):
+    """
+    Runs a PySCF calculation with optional GPU support and updates the molecule object with results.
+
+    Parameters
+    ----------
+    molecule : Structure
+        The molecule object to update with SCF energy, forces, and electronic structure information.
+    Guess : bool, optional
+        If True, uses a previous guess for SCF initialization.
+    use_gpu : bool, optional
+        If True, runs the calculation using GPU support.
+
+    Notes
+    -----
+    - Uses `run_pyscf_calculation` or `run_pyscf_calculation_gpu` based on the GPU flag.
+    - Updates molecule's SCF energy, forces, and electronic information attributes.
+    """
     e = molecule.scf_energy
     mol = create_pyscf_molecule(molecule)
-    guess = False
+
     time1 = time.time()
     if use_gpu==False:
         if Guess ==False: 
@@ -100,6 +149,28 @@ def run_pySCF(molecule,Guess=True,use_gpu = False):
     molecule.update_elecinfo(mf)
 
 def initial_conditions(symbols, coords):
+    """
+    Initializes a molecule with optimized geometry and frequency data using PySCF.
+
+    Parameters
+    ----------
+    symbols : list of str
+        Atomic symbols of the atoms in the molecule.
+    coords : list of list of float
+        Atomic coordinates in Bohr units.
+
+    Returns
+    -------
+    geom_opt : ndarray
+        The optimized atomic coordinates.
+    freq : Frequency object
+        Frequency and normal mode data for the optimized structure.
+
+    Notes
+    -----
+    - First, performs a geometry optimization and then calculates vibrational frequencies.
+    - Utilizes RKS method with hybrid functional '0.5*HF + 0.5*B88,LYP' for both steps.
+    """
     # Create PySCF molecule
     mol = gto.Mole()
     mol.atom = [(symbols[i], coords[i]) for i in range(len(symbols))]
@@ -133,11 +204,30 @@ def initial_conditions(symbols, coords):
 def run_pyscf_calculation_gpu(mol, scf_algorithm='DIIS', prev_mf=None):
     from gpu4pyscf.dft import rks, uks
     """
-    Run a PySCF SCF calculation on the GPU.
-    :param mol: A PySCF molecule object.
-    :param scf_algorithm: SCF algorithm to use (default: 'DIIS').
-    :param prev_mf: A previous mean-field solution to start from, if available.
-    :return: A tuple containing (SCF energy, forces, mean-field object).
+    Runs a GPU-accelerated PySCF SCF calculation.
+
+    Parameters
+    ----------
+    mol : gto.Mole
+        A PySCF molecule object.
+    scf_algorithm : str, optional
+        SCF algorithm to use, default is 'DIIS'.
+    prev_mf : SCF object, optional
+        Previous mean-field solution for initialization if available.
+
+    Returns
+    -------
+    energy : float
+        The calculated SCF energy.
+    forces : ndarray
+        The calculated nuclear gradients (forces).
+    mf : SCF object
+        The mean-field SCF object with solution information.
+
+    Notes
+    -----
+    - Uses GPU-accelerated RKS/UKS for closed/open-shell calculations.
+    - Supports density fitting with hybrid functionals for enhanced performance.
     """
 
     # Set the appropriate SCF method based on the spin and move to GPU
