@@ -2,7 +2,7 @@
 import time
 import os
 from pyscf import gto, scf, dft, grad, lib, hessian
-# from pyscf.geomopt.geometric_solver import optimize
+from pyscf.geomopt.geometric_solver import optimize
 # from pyscf.prop.freq import rks as freq
 
 
@@ -106,7 +106,6 @@ def run_pyscf_calculation(mol, scf_algorithm='DIIS', prev_mf=None):
 
     return energy, forces, mf
  
-
 def run_pySCF(molecule,Guess=True,use_gpu = False):
     """
     Runs a PySCF calculation with optional GPU support and updates the molecule object with results.
@@ -163,8 +162,10 @@ def initial_conditions(symbols, coords):
     -------
     geom_opt : ndarray
         The optimized atomic coordinates.
-    freq : Frequency object
-        Frequency and normal mode data for the optimized structure.
+    frequencies : ndarray
+        Vibrational frequencies (in atomic units).
+    normal_modes : ndarray
+        Normal mode displacement vectors.
 
     Notes
     -----
@@ -177,29 +178,36 @@ def initial_conditions(symbols, coords):
     mol.basis = '6-31+G*'
     mol.unit = 'Bohr'
     mol.build()
-    
+
     # Optimize geometry
     start_time = time.time()
     mf = dft.RKS(mol)
+    mf.verbose = 4
     mf.xc = '0.5*HF + 0.5*B88,LYP'
     mf.conv_tol = 1e-7
     mf.max_cycle = 500
     mf.kernel()
     mol_eq = optimize(mf)
-    print(mol_eq.atom_coords())
     geom_opt = mol_eq.atom_coords()
     end_time = time.time()
     print(f'Geometry optimization took {end_time - start_time} seconds')
-    
+
     # Calculate normal modes (frequencies)
     start_time = time.time()
-    mf = dft.freq(mol_eq).run()
-    w, modes = freq.Freq(mf).kernel()
-    print(freq)
+    freq_calc = freq.Freq(mol_eq, mf)
+    frequencies, normal_modes = freq_calc.kernel()
     end_time = time.time()
     print(f'Frequency calculation took {end_time - start_time} seconds')
-    
-    return geom_opt, freq
+
+    # Output results
+    print("Optimized Geometry:")
+    print(geom_opt)
+    print("Frequencies (a.u.):")
+    print(frequencies)
+    print("Normal Modes:")
+    print(normal_modes)
+
+    return geom_opt, frequencies, normal_modes
 
 def run_pyscf_calculation_gpu(mol, scf_algorithm='DIIS', prev_mf=None):
     from gpu4pyscf.dft import rks, uks

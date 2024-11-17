@@ -45,14 +45,21 @@ def CompForceEhr(A, F, E, C,nst):
     f1 = np.zeros(ndim, dtype=np.float64)
     f2 = np.zeros(ndim, dtype=np.float64)
 
-    for i in range(nst-1):
-        f1 += F[:] * np.abs(A[i])**2
-    
-    
-    for i in range(nst):
-        for j in range(i+1, nst):
-            ae = 2.0 * np.real(np.conj(A[i]) * A[j]) * (E[i] - E[j])
-            f2 += ae * C
+    # f1 calculation
+    if nst == 1:
+        # Directly compute for a single state
+        f1 += F[:] * np.abs(A[0])**2
+    else:
+        # Loop through states for nst > 1
+        for i in range(nst-1):
+            f1 += F[:] * np.abs(A[i])**2
+
+    # f2 calculation
+    if nst > 1:
+        for i in range(nst):
+            for j in range(i+1, nst):
+                ae = 2.0 * np.real(np.conj(A[i]) * A[j]) * (E[i] - E[j])
+                f2 += ae * C
    
     ForceVector = f1 + f2
 
@@ -319,8 +326,8 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
         velocities[i,:] = shrunk_molecule.momenta[i,:]/shrunk_molecule.masses[i]
     
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
-    print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20).shape)
-    print("amplitudes shape after reshape:", amplitudes.reshape(-1, 1).shape)
+    # print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20).shape)
+    # print("amplitudes shape after reshape:", amplitudes.reshape(-1, 1).shape)
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), amplitudes.reshape(-1, 1))
 
     Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,Coupling,nst)/10
@@ -443,8 +450,10 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
 
     A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), Amplitudes_temp)
     Force_vector = Force_vector.reshape(-1, 3)
-    
+    # print(shrunk_molecule1.momenta)
+    # print('Force_vector: ',Force_vector)
     shrunk_molecule1.momenta = shrunk_molecule1.momenta + increment * Force_vector 
+    # print(shrunk_molecule1.momenta)
     
     shrunk_molecule1.update_symbols(shrunk_molecule2.symbols)
     shrunk_molecule1.update_coordinates(shrunk_molecule2.coordinates)

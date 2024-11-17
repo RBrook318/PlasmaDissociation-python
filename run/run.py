@@ -113,7 +113,7 @@ if __name__=="__main__":
                 f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
                 f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
             f.write("cd "+EXDIR1+"/setup \n")
-            f.write("python ./../code/setup.py")
+            f.write("python ./../code/setupnew.py")
             f.close()
             command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
             subprocess.call(command)
@@ -177,7 +177,8 @@ if __name__=="__main__":
     else: 
         for i in range(inputs["setup"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
-            print(EXDIR1)
+            if inputs["run"]["Geom_flg"] == 1:
+                subprocess.call(["python", "../../../code/setupnew.py"])
             subprocess.call(["python", "../../../code/main.py"])
 
        
