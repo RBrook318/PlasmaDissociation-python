@@ -132,7 +132,7 @@ if __name__=="__main__":
             f.write("module load test qchem \n")
             f.write("module load qchem \n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write('tar -xzvf /nobackup/cm18rb/qchem.tar.gz -C $TMPDIR/qchemlocal\n')
+            f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
             f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
