@@ -10,6 +10,9 @@ from collections import defaultdict
 import graphs as grph
 
 def process_results():
+    if os.path.exists('output/dissociation.out') and os.path.exists('output/fragments.out'):
+        print("Results already processed. Skipping further processing.")
+        return
     # 0. Increment count file
     track_completed_trajectory()
     # 1.read in the bonding array

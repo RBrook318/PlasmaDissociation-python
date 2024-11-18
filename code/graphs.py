@@ -69,8 +69,7 @@ def generate_graphs_from_json(json_file):
     
     # Read the total number of bonds from allbonds.out
     with open('../results/completed_trajectories.txt', 'r') as all_file:
-        lines = all_file.readlines() 
-        total_trajectories = lines  # Total number of lines in the file
+        total_trajectories = int(all_file.read().strip()) 
 
     # Iterate through each graph configuration in the JSON
     for graph_name, graph_data in graphs.items():
@@ -109,5 +108,3 @@ def create_graphs():
     """
     json_file = '../results/graphs_config.json'  # Path to your JSON file
     generate_graphs_from_json(json_file)
-
-
