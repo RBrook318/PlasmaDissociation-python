@@ -84,6 +84,7 @@ def organise_modes(modes,atoms):
             cnt+=1
    
     return numeric_modes
+
 if __name__ == "__main__":
     with open('../inputs.json') as f:
         inputs=json.load(f)
@@ -100,9 +101,7 @@ if __name__ == "__main__":
     num_modes = len(modes)
     natoms = int((num_modes+6)/3)
     modes=organise_modes(modes,natoms)
-    masses = np.zeros((natoms))
-    # for i in range(0, natoms):
-    #     masses[i] = 1822.887 * int(ChemFormula(symbols[i]).formula_weight)
+    masses = init.setup_masses(symbols)
     Px, Py, Pz = create_geom(natoms,num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
     for j in range(inputs["setup"]["repeats"]):
         with open('../rep-'+str(j+1)+'/Geometry', 'w') as file:
