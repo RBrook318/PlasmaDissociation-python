@@ -323,9 +323,14 @@ def initial_conditions(symbols,coords,cores):
     with open('optimisation.out', 'w') as f:
         f.write(output)
     parser_output = basic_optimization(output)
-    opt_geoms=(parser_output['optimized_molecule'])
+    opt_coords=(parser_output['optimized_molecule'])
+    values=opt_coords.get_coordinates()
+    atom=opt_coords.get_symbols()
+    opt_geoms = ''
+    for i in range(len(atom)):
+        opt_geoms+=(atom[i]+" "+str(float(values[i][0]))+" "+str(float(values[i][1]))+" "+str(float(values[i][2]))+" \n")
     # Find Normal modes
-    qc_inp = QchemInput(opt_geoms,
+    qc_inp = QchemInput(opt_coords,
                         jobtype='FREQ',
                         exchange='BHHLYP',
                         basis='6-31+G*',
