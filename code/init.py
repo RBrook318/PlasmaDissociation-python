@@ -81,7 +81,7 @@ class Molecule:
     from_json(filename):
         Class method to initialize a Molecule instance from a JSON file.
     """
-    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None, elecinfo=None, masses=None):
+    def __init__(self, symbols, coordinates, momenta=None, scf_energy=None, forces=None, amplitudes=None, timestep=0, multiplicity=5, dissociation_flags=None, elecinfo=None, masses=None, coupling=None,time=None):
         self.symbols = symbols
         self.coordinates = np.array(coordinates, dtype=np.float64)
         self.momenta = np.array(momenta, dtype=np.float64) if momenta is not None else None
@@ -93,6 +93,8 @@ class Molecule:
         self.dissociation_flags = dissociation_flags or ["NO"] * len(symbols)
         self.elecinfo = elecinfo if elecinfo is not None else None
         self.masses = np.array(masses, dtype=np.float64) if masses is not None else np.zeros(len(symbols), dtype=np.float64)
+        self.coupling = np.array(coupling, dtype=np.float64) if coupling is not None else None
+        self.time = np.array(time) if time is not None else None
 
     def update_symbols(self, new_symbols):
         self.symbols = new_symbols
@@ -126,6 +128,10 @@ class Molecule:
 
     def update_masses(self, new_masses):
         self.masses = np.array(new_masses, dtype=np.float64)
+    
+    def update_coupling(self, new_coupling):
+        self.masses = np.array(new_coupling, dtype=np.float64)
+    
 
     def print_info(self):
         print("Symbols:", self.symbols)
@@ -143,6 +149,10 @@ class Molecule:
         print("Dissociation Flags:", self.dissociation_flags)
         print("Masses:")
         print(self.masses)
+        print("Coupling:")
+        print(self.coupling)
+        print("Time:")
+        print(self.time)
 
     def copy(self):
         # Create a new instance with the same attribute values
@@ -157,7 +167,9 @@ class Molecule:
             multiplicity=self.multiplicity,
             dissociation_flags=self.dissociation_flags,
             elecinfo=self.elecinfo,
-            masses=self.masses.copy() if self.masses is not None else None
+            masses=self.masses.copy() if self.masses is not None else None,
+            coupling=self.coupling.copy() if self.coupling is not None else None,
+            time = self.time if self.time is not None else None
         )
         
         return new_molecule
@@ -174,7 +186,8 @@ class Molecule:
             'Timestep': self.timestep,
             'Multiplicity': self.multiplicity,
             'Dissociation Flags': self.dissociation_flags,
-            'Masses': self.masses.tolist() if self.masses is not None else None
+            'Masses': self.masses.tolist() if self.masses is not None else None,
+            'Time': self.time.tolist() if self.time is not None else None
         }
 
     def to_json(self, filename):
@@ -202,7 +215,8 @@ class Molecule:
             timestep=data['Timestep'],
             multiplicity=data['Multiplicity'],
             dissociation_flags=data['Dissociation Flags'],
-            masses=data['Masses'] if 'Masses' in data and data['Masses'] is not None else None
+            masses=data['Masses'] if 'Masses' in data and data['Masses'] is not None else None,
+            time = data['Time'] if 'Time' in data and data['Time'] is not None else None 
         )
 
     @classmethod
@@ -235,7 +249,7 @@ def create_empty_molecule(natoms, nst, spin_flip):
     coordinates = np.zeros((natoms, 3), dtype=np.float64)
     scf_energy = np.zeros((nst), dtype=np.float64)
     momenta = np.zeros((natoms, 3), dtype=np.float64)
-    forces = np.zeros((natoms, 3), dtype=np.float64)
+    forces = np.zeros((natoms, 3,nst), dtype=np.float64)
     if spin_flip == 1:
         multiplicity = 5
     elif spin_flip == 0:
@@ -303,12 +317,14 @@ def initialize_structure(nst, spin_flip,mult):
     elif spin_flip == 0:
         multiplicity = mult
 
-    forces = np.zeros((natoms, 3), dtype=np.float64)
+    forces = np.zeros((natoms, 3, nst), dtype=np.float64)
     scf_energy = np.zeros((nst), dtype=np.float64)
     masses = np.zeros(natoms, dtype=np.float64)  # Initialize masses array
     masses = setup_masses(symbols)
+    coupling = np.zeros((natoms,3))
+    time = np.zeros((5))
     # Create Molecule object with default amplitudes
-    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity=multiplicity, amplitudes=amplitudes, masses=masses)
+    molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity=multiplicity, amplitudes=amplitudes, masses=masses,coupling=coupling,time=time)
 
     return molecule
 

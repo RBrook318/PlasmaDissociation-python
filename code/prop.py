@@ -21,48 +21,52 @@ Functions:
 
 import numpy as np
 from scipy.linalg import expm
-
+import init
 
 
 np.set_printoptions(precision=30)
 
-def CompForceEhr(A, F, E, C,nst):
+def CompForceEhr(A, F, E, C, nst):
     """
     Computes the Ehrenfest force vector using state amplitudes, forces, and couplings.
-    
+
     Parameters:
-    - A : Array of amplitudes.
-    - F : Array of forces.
-    - E : Array of energies.
-    - C : Coupling constant.
-    - nst : Number of states.
-    
+    - A : (nst,) ndarray
+        Array of amplitudes.
+    - F : (natoms, 3, nst) ndarray
+        Array of forces for each atom in each state.
+    - E : (nst,) ndarray
+        Array of energies for each state.
+    - C : (natoms, 3) ndarray
+        Coupling values for each atom.
+    - nst : int
+        Number of states.
+
     Returns:
-    - ForceVector : Calculated Ehrenfest force vector.
+    - ForceVector : (natoms, 3) ndarray
+        Calculated Ehrenfest force vector.
     """
-    ndim = F.shape
-    ForceVector = np.zeros(ndim, dtype=np.float64)
-    f1 = np.zeros(ndim, dtype=np.float64)
-    f2 = np.zeros(ndim, dtype=np.float64)
+    natoms, _, _ = F.shape
+    ForceVector = np.zeros((natoms, 3), dtype=np.float64)
+    f1 = np.zeros((natoms, 3), dtype=np.float64)
+    f2 = np.zeros((natoms, 3), dtype=np.float64)
 
-    # f1 calculation
+    # f1 calculation (weighted force sum)
     if nst == 1:
-        # Directly compute for a single state
-        f1 += F[:] * np.abs(A[0])**2
+        f1 += F[:, :, 0] * np.abs(A[0])**2
     else:
-        # Loop through states for nst > 1
-        for i in range(nst-1):
-            f1 += F[:] * np.abs(A[i])**2
+        for i in range(nst):
+            f1 += F[:, :, i] * np.abs(A[i])**2
 
-    # f2 calculation
+    # f2 calculation (non-adiabatic coupling term)
     if nst > 1:
         for i in range(nst):
             for j in range(i+1, nst):
                 ae = 2.0 * np.real(np.conj(A[i]) * A[j]) * (E[i] - E[j])
-                f2 += ae * C
-   
-    ForceVector = f1 + f2
+                f2 += ae * C[:,:,i,j]
 
+    ForceVector = f1 + f2
+    
     return ForceVector
 
 def magnus2(H0, H1, dt):
@@ -82,18 +86,27 @@ def magnus2(H0, H1, dt):
     ndim = H0.shape[0]
 
     # Calculate the average
+    # print("electronic hamilonians \n")
+    # print(H0,"\n")
+    # print(H1,"\n")
+    # print("Average: \n")
+
     Hav = np.sum(np.diag(H0) + np.diag(H1)) / (2 * ndim)
-    
+    # print(Hav, "\n")
+    # print(Hav)
     # The trace matrix
     Htr = np.diag(np.full(ndim, Hav))
-
+    # print("Trace matrix \n")
+    # print(Htr)
     
     a0 = (H1 + H0) / 2.0 - Htr
     W1 = dt * a0
     
     # Assuming exp_pade is a function that performs the matrix exponential using Pade approximation
     magH = exp_matrix(W1) * np.exp(Hav * dt)
-
+    # print("MagH with timestep",dt,":")
+    # print(magH)
+    # print("----------")
     return magH
 
 def exp_matrix(A, t_in=None):
@@ -156,7 +169,10 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     The diagonal elements are the SCF energies shifted by a constant (77.67785291), 
     while the off-diagonal elements represent velocity-coupling terms.
     """
+    # print("Calculating the hamiltonian")
     nst = len(molecule.scf_energy)
+    natoms = len(molecule.symbols)
+    # print("Number of states:", nst)
     ii = 1j  # imaginary unit
 
     electronic_hamiltonian = np.zeros((nst, nst), dtype=np.cdouble)
@@ -164,7 +180,7 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     for n1 in range(nst):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
         for n2 in range(n1 + 1, nst):
-            electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling)
+            electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling[:,:,n1,n2])
             electronic_hamiltonian[n2, n1] = -electronic_hamiltonian[n1, n2]
 
     return electronic_hamiltonian
@@ -204,7 +220,7 @@ def shrink_molecule(molecule):
             shrunk_index.append(i)
 
     shrunk_molecule = molecule.copy()
-
+    
     new_symbols = [molecule.symbols[i] for i in range(natoms) if i not in dis_index]
     new_coordinates = [molecule.coordinates[i,:] for i in range(natoms) if i not in dis_index]
     new_momenta = [molecule.momenta[i,:] for i in range(natoms) if i not in dis_index]
@@ -213,6 +229,7 @@ def shrink_molecule(molecule):
     shrunk_molecule.update_symbols(new_symbols)
     shrunk_molecule.update_coordinates(new_coordinates)
     shrunk_molecule.update_momenta(new_momenta)
+    
     
     return shrunk_molecule, shrunk_index
 
@@ -321,32 +338,39 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     
     natoms = len(shrunk_molecule.symbols)
     
-    Coupling = 0
+    coupling = np.zeros((natoms,3,nst,nst))
     for i in range(0, natoms):
         velocities[i,:] = shrunk_molecule.momenta[i,:]/shrunk_molecule.masses[i]
+        if nst > 1:
+            for y in range(0,3):
+                coupling[i,y,0,1] = shrunk_molecule.coupling[i,y]  
+                coupling[i,y,1,0] = -shrunk_molecule.coupling[i,y]  
+            
     
-    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)
+    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, coupling)
     # print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20).shape)
-    # print("amplitudes shape after reshape:", amplitudes.reshape(-1, 1).shape)
-    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), amplitudes.reshape(-1, 1))
-
-    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,Coupling,nst)/10
+    print(Eham_1)
+    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment/20), amplitudes)
+    # print('Amplitudes:', Amplitudes_temp)
+    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling,nst)/10
     
     for im in range(1, 10):
-        A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 10), Amplitudes_temp)
-        Amplitudes_temp = A1
-       
-        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, Coupling,nst)/10
         
+        A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment/10), Amplitudes_temp)
+        # print('Amplitudes:', A1)
+        Amplitudes_temp = A1
+        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling,nst)/10
+    
+    print("Final amplitudes of prop 1: \n")
+    print(A1)
+    print("------------------\n")
 
     shrunk_molecule.update_amplitudes(A1)
     shrunk_molecule.update_timestep(shrunk_molecule.timestep+increment)
   
-    Force_vector = Force_vector.reshape(-1, 3) 
     for i in range(natoms):
         shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/shrunk_molecule.masses[i]
         shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + increment*Force_vector[i,:]
-
     restore_molecule(molecule2, shrunk_molecule, shrunk_index)
 
     return molecule2
@@ -398,8 +422,6 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     intermediate steps and applied to propagate the state of `molecule1`.
     """
 
-    velocities_1 = np.zeros((natoms,3))
-    velocities_2 = np.zeros((natoms,3))
 
 
 
@@ -407,49 +429,68 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule2, shrunk_index = shrink_molecule(molecule2)
 
 
-    Coupling = 0
+
     natoms = len(shrunk_molecule1.symbols)
+    velocities_1 = np.zeros((natoms,3))
+    velocities_2 = np.zeros((natoms,3))
+    coupling_1 = np.zeros((natoms,3,nst,nst))
+    coupling_2 = np.zeros((natoms,3,nst,nst))
     for i in range(0, natoms):
         velocities_1[i,:] = shrunk_molecule1.momenta[i,:]/shrunk_molecule1.masses[i]
         velocities_2[i,:] = shrunk_molecule2.momenta[i,:]/shrunk_molecule2.masses[i]
-        
-    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,Coupling)
+        if nst >1: 
+            for y in range(0,3):
+                coupling_1[i,y,0,1] = shrunk_molecule1.coupling[i,y]  
+                coupling_1[i,y,1,0] = -shrunk_molecule1.coupling[i,y]  
+                coupling_2[i,y,0,1] = shrunk_molecule2.coupling[i,y]  
+                coupling_2[i,y,1,0] = -shrunk_molecule2.coupling[i,y]  
 
-    Eham_2 = calculate_electronic_hamiltonian(shrunk_molecule2,velocities_2,Coupling)
+    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,coupling_1)
+    # print("Coupling difference:", coupling_1 - coupling_2)
+    Eham_2 = calculate_electronic_hamiltonian(shrunk_molecule2,velocities_2,coupling_2)
+    # print(Eham_1)
+    # print(Eham_2)
 
+    ElPhase = np.ones(nst)  # Initialize ElPhase[1] = 1 (Fortran index 1 → Python index 0)
+    for j in range(1, nst):  
+        num = np.sum(coupling_1[:, :, 0, j] * coupling_2[:, :, 0, j])  # Selecting (natoms,) elements
+        den = np.sqrt(np.sum(coupling_1[:, :, 0, j]**2) * np.sum(coupling_2[:, :, 0, j]**2))
     
-    ElPhase = np.zeros(nst, dtype=int)
-    ElPhase[0] = 1
-
-    for j in range(1, nst):
-        # val = np.sum(Coupling * Coupling) / np.sqrt(np.sum(Coupling**2) * np.sum(Coupling**2))
-        val = 0
-        ElPhase[j] = np.where(val >= 0, 1, -1)
+        val = num / den if den != 0 else 0.0  # Avoid division by zero
+        ElPhase[j] = np.sign(val)  # Equivalent to sign(1., val)
+        # print("Phase:", ElPhase[j])
+        # Warning condition
         if abs(val) < 0.5 and abs(shrunk_molecule2.amplitudes[j]) >= 0.35:
-            print(f'!! Warning: the sign for state {j} is not reliable! {val:.4f}')
-
+            print(f"!! Warning: the sign for state {j} is not reliable! {val:.4f}")
+    
     for i in range(1, nst):
-        Coupling *= ElPhase[i]
-        Coupling *= ElPhase[i]
-
+        coupling_2[:,:,i,:] *= ElPhase[i]  # Apply phase to the second dimension
+        coupling_2[:,:,:,i] *= ElPhase[i]  # Apply phase to the third dimension
+    
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), shrunk_molecule1.amplitudes)
     Energy_temp = 0.05 * shrunk_molecule2.scf_energy + 0.95 * shrunk_molecule1.scf_energy
     Forces_temp = 0.05 * shrunk_molecule2.forces + 0.95 * shrunk_molecule1.forces
-    Coupling_temp = 0.05 * Coupling + 0.95 * Coupling
+    Coupling_temp = 0.05 * coupling_2 + 0.95 * coupling_1
 
     Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp, nst)/10.
     for im in range(1, 10):
         Eham_temp = (im * Eham_2 + (10 - im) * Eham_1) * 0.1
-        Energy_temp = (0.1 * im + 0.05) * shrunk_molecule2.scf_energy + (0.95 - im * 0.1) * shrunk_molecule1.scf_energy
-        Forces_temp = (0.1 * im + 0.05) * shrunk_molecule2.forces + (0.95 - im * 0.1) * shrunk_molecule1.forces
-        Coupling_temp = (0.1 * im + 0.05) * Coupling + (0.95 - im * 0.1) * Coupling
-        A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, increment / 10), Amplitudes_temp)
+        Energy_temp = ((0.1 * im) + 0.05) * shrunk_molecule2.scf_energy + (0.95 - im * 0.1) * shrunk_molecule1.scf_energy
+        Forces_temp = ((0.1 * im) + 0.05) * shrunk_molecule2.forces + (0.95 - im * 0.1) * shrunk_molecule1.forces
+        Coupling_temp = ((0.1 * im) + 0.05) * coupling_2 + (0.95 - im * 0.1) * coupling_1
+        A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, increment/10), Amplitudes_temp)
         Amplitudes_temp = A1
+        # print("Calculated amplitudes: \n")
+        # print(A1)
+        # print("------------------\n")
         Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, nst)
         Force_vector += Force_vector_temp / 10
 
-    A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), Amplitudes_temp)
-    Force_vector = Force_vector.reshape(-1, 3)
+
+    A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), A1)
+    print("Final amplitudes: \n")
+    print(A1)
+    print("------------------\n")
     # print(shrunk_molecule1.momenta)
     # print('Force_vector: ',Force_vector)
     shrunk_molecule1.momenta = shrunk_molecule1.momenta + increment * Force_vector 
@@ -462,11 +503,11 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule1.update_amplitudes(A1)
     shrunk_molecule1.update_timestep(shrunk_molecule2.timestep)
     restore_molecule(molecule1,shrunk_molecule1, shrunk_index)
-    
+    molecule1.coupling = molecule2.coupling
 
     return molecule1
 
-def fragements(molecule,spin_flip):
+def fragments(molecule, spin_flip):
     """
     Analyzes and marks atoms in a molecule that meet dissociation criteria and
     updates multiplicity based on the presence of a spin flip.
@@ -487,46 +528,38 @@ def fragements(molecule,spin_flip):
     - dissociated : int
         Indicator of whether any atoms were marked as dissociated (1 for true, 0 for false).
 
-    Functions:
-    ---------
-    - `np.delete(array, index)` :
-        Removes elements from an array based on specified indices.
-    - `sqrt` and `sum` :
-        Used to calculate force magnitude, checking against the dissociation threshold.
-
     Notes:
     -----
-    This function iterates over atoms with no dissociation flags, checking if their 
-    forces are below the defined threshold to mark them as dissociated. Based on 
-    dissociation, it updates the molecular multiplicity, applying the spin flip if 
-    required.
+    - Iterates over atoms with no dissociation flags, checking if their 
+      forces are below a defined threshold.
+    - Updates the molecular multiplicity and applies a spin flip if required.
+    - Now operates with forces stored in a `(natoms, 3, nstates)` array.
     """
-
     natom = len(molecule.symbols)
-    molecules_with_no_flag = [i for i in range(1, natom + 1) if molecule.dissociation_flags[i - 1] == 'NO']
+    molecules_with_no_flag = [i for i in range(natom) if molecule.dissociation_flags[i] == 'NO']
 
-    dissociated = 0    
+    dissociated = 0
     j = 1
+    to_remove = []  # Collect indices to remove
 
     for i in molecules_with_no_flag:
-        val = np.sqrt(np.sum(molecule.forces[3 * (j - 1):3 * j]**2))
-
+        # Compute force magnitude across all states
+        val = np.sqrt(np.sum(molecule.forces[j-1, :, :]**2))
         if val < 1.0e-5:
- 
             molecule.multiplicity -= 1
-            if spin_flip ==1:
-                if molecule.multiplicity == 2:
-                    molecule.multiplicity = 4
-            elif spin_flip ==0:
-                if molecule.multiplicity == 0:
-                    molecule.multiplicity = 2
-            molecule.dissociation_flags[i - 1] = 'YES'
+            if spin_flip == 1 and molecule.multiplicity == 2:
+                molecule.multiplicity = 4
+            elif spin_flip == 0 and molecule.multiplicity == 0:
+                molecule.multiplicity = 2
+
+            molecule.dissociation_flags[i] = 'YES'
             dissociated = 1
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
-            molecule.forces = np.delete(molecule.forces, 3 * (j-1))
-            j -= 1
+            to_remove.append(j-1)
         j += 1
+    # Remove dissociated atoms from forces
+    if to_remove:
+        molecule.forces = np.delete(molecule.forces, to_remove, axis=0)
+        molecule.coupling = np.delete(molecule.coupling, to_remove,axis=0)
 
     return molecule, dissociated
 
@@ -573,6 +606,3 @@ def prop_diss(molecule, increment):
         molecule.coordinates[i, :] = molecule.coordinates[i, :] + increment * velocities[:]
 
     return molecule
-
-
-    

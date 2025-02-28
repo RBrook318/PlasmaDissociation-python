@@ -45,6 +45,9 @@ from pyqchem import QchemInput, Structure
 from pyqchem import get_output_from_qchem
 from pyqchem.parsers.parser_optimization import basic_optimization
 from pyqchem.parsers.parser_frequencies import basic_frequencies
+from pyqchem.parsers.basic import basic_parser_qchem
+import subprocess
+import time
 
 np.set_printoptions(precision =30)
 
@@ -72,7 +75,81 @@ def file_contains_string(file_path, search_string):
                 return True
     return False
 
-def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
+def create_qchem_nac_input(molecule, scf_algorithm="DIIS", Guess=True, basis='6-31+G*', exchange='BHHLYP', total_states=2):
+    """
+    Generates a QChem input configuration for simultaneous force and NAC calculations.
+
+    Parameters
+    ----------
+    molecule : Structure
+        A molecule structure with coordinates, symbols, and multiplicity set.
+    spin_flip : int
+        Indicates whether to use spin-flip (1) or standard (0) DFT calculations.
+    state : int
+        The state for which forces will be calculated (1-based index).
+    scf_algorithm : str, optional
+        The SCF convergence algorithm, by default "DIIS".
+    Guess : bool, optional
+        Whether to include initial SCF coefficients as the guess, by default True.
+    basis : str, optional
+        The basis set to use, by default '6-31+G*'.
+    exchange : str, optional
+        The exchange-correlation functional, by default 'BHHLYP'.
+    total_states : int, optional
+        The total number of excited states to compute, by default 2.
+
+    Returns
+    -------
+    QchemInput
+        A QChem input object with settings for simultaneous force and NAC calculations.
+    """
+
+    # Filter indices based on dissociation flag (if applicable)
+    active_indices = [i for i, flag in enumerate(molecule.dissociation_flags) if flag == 'NO']
+    active_coords = [molecule.coordinates[i] for i in active_indices]
+    active_symbols = [molecule.symbols[i] for i in active_indices]
+
+
+    # Create the molecule structure
+    molecule = Structure(coordinates=active_coords, symbols=active_symbols, multiplicity=molecule.multiplicity)
+    
+    qc_inp = QchemInput(
+        molecule,
+        exchange=exchange,
+        basis=basis,
+        unrestricted=True,
+        max_scf_cycles=500,
+        sym_ignore=True,
+        scf_algorithm=scf_algorithm,
+        cis_n_roots=total_states,
+        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500,'calc_nac':'true','CIS_DER_NUMSTATE': total_states},
+        )
+
+    
+    # Get the Q-Chem input file content
+    qc_content = qc_inp.get_txt().splitlines()  
+
+    # Modify the content if Guess is True
+    if Guess:
+        for idx, line in enumerate(qc_content):
+            if "scf_algorithm" in line:
+                qc_content.insert(idx + 1, "SCF_GUESS           Read")
+                break  # Stop after inserting once
+
+    # Write the modified content back
+    with open("ec.inp", "w") as f:
+        f.write("\n".join(qc_content) + "\n")  # Ensure newlines are preserved
+        f.write("\n$derivative_coupling\n")
+        f.write("comment\n")
+        for i in range(1, total_states + 1):
+            for j in range(i + 1, total_states + 1):
+                f.write(f"{i} {j}\n")
+        f.write("$end\n")
+
+    return qc_inp
+
+def create_qchemforces_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=True, excited_state=1, number_of_states=1,
+                             basis='6-31+G*'):
     """
     Generates a QChem input configuration for an SCF calculation based on 
     molecular data, SCF algorithm, and spin-flip configuration.
@@ -87,6 +164,12 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
         The SCF convergence algorithm, by default "DIIS".
     Guess : bool, optional
         Whether to include initial SCF coefficients as the guess, by default True.
+    excited_state : int, optional
+        The excited state for which gradients will be calculated, by default 1 (first excited state).
+    basis : str, optional
+        The basis set to use, by default '6-31+G*'.
+    exchange : str, optional
+        The exchange-correlation functional, by default 'BHHLYP'.
 
     Returns
     -------
@@ -98,73 +181,91 @@ def create_qchem_input(molecule, spin_flip,scf_algorithm="DIIS", Guess=True):
     - When spin_flip is set to 1, additional parameters for spin-flip are 
       included in the input. If `Guess` is True, initial SCF coefficients 
       are included in the input for a better starting guess.
+    - The `excited_state` parameter defines which excited state is used in 
+      derivative calculations, affecting `cis_state_deriv`.
     """
+    # Validate inputs
+    if spin_flip not in [0, 1]:
+        raise ValueError("spin_flip must be 0 (standard) or 1 (spin-flip).")
+    if excited_state < 1:
+        raise ValueError("excited_state must be at least 1.")
+
     # Filter indices based on dissociation flag
     active_indices = [i for i, flag in enumerate(molecule.dissociation_flags) if flag == 'NO']
     active_coords = [molecule.coordinates[i] for i in active_indices]
     active_symbols = [molecule.symbols[i] for i in active_indices]
     coefficients = molecule.elecinfo
+
+    # Create the molecule structure
     molecule = Structure(coordinates=active_coords, symbols=active_symbols, multiplicity=molecule.multiplicity)
-    if spin_flip==0:
-        if Guess:             
-            qc_inp=QchemInput(molecule,
-                        scf_guess = coefficients,
-                        jobtype='force',
-                        exchange='BHHLYP',
-                        basis='6-31+G*',
-                        unrestricted=True,
-                        max_scf_cycles=500,
-                        sym_ignore=True,
-                        scf_algorithm=scf_algorithm,
-                        extra_rem_keywords={'input_bohr':'true'}
-                        # set_iter=500,
-                        )
+
+    # Define common parameters
+    if spin_flip == 0:
+        if Guess:
+            qc_inp = QchemInput(
+                molecule,
+                jobtype='force',
+                exchange='BHHLYP',
+                scf_guess = coefficients,
+                basis=basis,
+                unrestricted=True,
+                max_scf_cycles=500,
+                sym_ignore=True,
+                scf_algorithm=scf_algorithm,
+                extra_rem_keywords={'input_bohr': 'true'}
+            )
         else:
-            qc_inp=QchemInput(molecule,
-                        jobtype='force',
-                        exchange='BHHLYP',
-                        basis='6-31+G*',
-                        unrestricted=True,
-                        max_scf_cycles=500,
-                        sym_ignore=True,
-                        scf_algorithm=scf_algorithm,
-                        extra_rem_keywords={'input_bohr':'true'}
-                        # set_iter=500,
-                        )  
-    elif spin_flip==1:   
-        if Guess:             
-            qc_inp=QchemInput(molecule,
-                        scf_guess = coefficients,
-                        jobtype='force',
-                        exchange='BHHLYP',
-                        basis='6-31+G*',
-                        unrestricted=True,
-                        max_scf_cycles=500,
-                        sym_ignore=True,
-                        scf_algorithm=scf_algorithm,
-                        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500},
-                        # set_iter=500,
-                        cis_n_roots=1,
-                        cis_state_deriv=1
-                        )
+            qc_inp = QchemInput(
+                molecule,
+                jobtype='force',
+                exchange='BHHLYP',
+                basis=basis,
+                unrestricted=True,
+                max_scf_cycles=500,
+                sym_ignore=True,
+                scf_algorithm=scf_algorithm,
+                extra_rem_keywords={'input_bohr': 'true'}
+            )
+    elif spin_flip == 1: 
+        if Guess:
+            qc_inp = QchemInput(
+                molecule,
+                jobtype='force',
+                exchange='BHHLYP',
+                scf_guess = coefficients,
+                basis=basis,
+                unrestricted=True,
+                max_scf_cycles=500,
+                sym_ignore=True,
+                scf_algorithm=scf_algorithm,
+                cis_n_roots=number_of_states,
+                cis_state_deriv= excited_state,
+                extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500}
+            )
         else:
-            qc_inp=QchemInput(molecule,
-                        jobtype='force',
-                        exchange='BHHLYP',
-                        basis='6-31+G*',
-                        unrestricted=True,
-                        max_scf_cycles=500,
-                        sym_ignore=True,
-                        scf_algorithm=scf_algorithm,
-                        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500},
-                        # set_iter=500,
-                        cis_n_roots=1,
-                        cis_state_deriv=1
-                        )
-       
-    return qc_inp
-                      
-def run_qchem(ncpu, molecule, nstates, spin_flip, Guess=True): 
+            qc_inp = QchemInput(
+                molecule,
+                jobtype='force',
+                exchange='BHHLYP',
+                basis=basis,
+                unrestricted=True,
+                max_scf_cycles=500,
+                sym_ignore=True,
+                scf_algorithm=scf_algorithm,
+                cis_n_roots=number_of_states,
+                cis_state_deriv= excited_state,
+                extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500}
+            )
+
+    # Add SCF guess if requested
+    # if Guess:
+    #     qc_inp.update_input({
+    #         'scf_guess': coefficients
+    #     })
+
+    return qc_inp 
+            
+def run_qchem(ncpu, molecule, nstates, spin_flip, basis, Guess=True): 
     """
     Executes a QChem job to calculate the electronic structure for a given molecule
     and updates its properties based on the computed results.
@@ -197,31 +298,59 @@ def run_qchem(ncpu, molecule, nstates, spin_flip, Guess=True):
     - Upon successful completion, forces and energy data are extracted from the QChem 
       output, which is then passed to the `readqchem` function for detailed parsing.
     """
-    qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS", Guess=Guess)
-    try:
-        output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
-        molecule.elecinfo=(ee['coefficients'])
-    except:
-        print('Using DIIS_GDM algorithm')
-        # Retry with a different setup
-        qc_inp=create_qchem_input(molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False)
+    
+    for state in range(1,nstates+1):
+        qc_inp=create_qchemforces_input(molecule, spin_flip,Guess=Guess,excited_state=state,number_of_states=nstates,basis = basis)
         try:
-            output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True)
+            qtime1 = time.time()
+            output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=True)
             molecule.elecinfo=(ee['coefficients'])
+            qtime2= time.time()
+            print("time for qchem inside:",qtime2-qtime1)
+            molecule.time[0] += qtime2-qtime1
+            molecule.time[2] += qtime2-qtime1
+            # Append f.out content to f.all
+            with open("f.all", "a") as f_all:
+                f_all.write(output)
         except:
-            with open("ERROR", "w") as file:
-                file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
-                file.write(output)
-            exit()
-    # Job completed successfully
-    readqchem(output, molecule,nstates,spin_flip)
-    # Append f.out content to f.all
-    # with open("f.all", "a") as f_all:
-    #     f_all.write(output)
+            # print('Using DIIS_GDM algorithm')
+            # Retry with a different setup
+            
+            qc_inp=create_qchemforces_input(molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False,excited_state=state,number_of_states=nstates,basis = basis)
+            try:
+                qtime1 = time.time()
+                output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=True)
+                molecule.elecinfo=(ee['coefficients'])
+                qtime2= time.time()
+                print(qtime2-qtime1)
+                molecule.time[0] += qtime2-qtime1
+                molecule.time[2] += qtime2-qtime1
+                with open("f.all", "a") as f_all:
+                    f_all.write(output)
+            except:
+                with open("ERROR", "w") as file:
+                    file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
+                    file.write(output)
+                exit()
+        # Job completed successfully
+        readqchemforces(output, molecule,state,spin_flip)
+
+    if nstates>1:
+        create_qchem_nac_input(molecule, scf_algorithm="DIIS", Guess=Guess,basis = basis,total_states=nstates)
+        qtime1 = time.time()
+        subprocess.run(["qchem", "-save", "-nt", str(ncpu), "ec.inp", "ec.out", "wf"])
+        qtime2= time.time()
+        molecule.time[0] += qtime2-qtime1
+        molecule.time[2] += qtime2-qtime1
+        readqchemnac('ec.out',molecule,nstates)
+        with open("ec.out", "r") as ec_file, open("ec.all", "a") as ec_all:
+            ec_all.write(ec_file.read())
+            ec_all.write("---------------------------------------------------\n")
+    print(molecule.time[0])
+
     return molecule
 
-
-def readqchem(output, molecule, nst,spin_flip):
+def readqchemforces(output, molecule, state,spin_flip):
 
     """
     Parses QChem output to extract the SCF energy and gradient forces for a given molecule,
@@ -248,18 +377,16 @@ def readqchem(output, molecule, nst,spin_flip):
     reduced_natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     ndim = 3 * reduced_natoms
     if spin_flip==1:
-        enum = output.find('Total energy for state  1:')
+        enum = output.find(f'Total energy for state  {state}:')
         scf_erg = float(output[enum: enum+100].split()[5])
-        molecule.scf_energy[0]=scf_erg
-        # molecule.scf_energy[1]=scf_erg
+        molecule.scf_energy[state-1]=scf_erg
         l2t = ' Gradient of the state energy (including CIS Excitation Energy)'
     else:
         enum = output.find('Total energy in the final basis set')
         scf_erg = float(output[enum: enum+100].split()[8])
-        molecule.scf_energy[0]=scf_erg
-        # molecule.scf_energy[1]=scf_erg
+        molecule.scf_energy[state-1]=scf_erg
         l2t = ' Gradient of SCF Energy'
-    
+
     output_lines = output.split("\n")
     enum = output.find(l2t)
     output_lines = output[enum:-1].split("\n")
@@ -276,8 +403,68 @@ def readqchem(output, molecule, nst,spin_flip):
         strt += 3
     f = -f
     f = np.where(f == -0.0, 0.0, f)
+    f = f.reshape(-1,3)
+    
     # Update the forces in the Molecule object
-    molecule.update_forces(f)
+    # molecule.update_forces(f)
+    molecule.forces[:,:,state-1] = f 
+ 
+def readqchemnac(filename, molecule, nst):
+    """
+    Parses QChem output to extract the SF-CIS derivative coupling for a given molecule,
+    ensuring the data is structured correctly as (natoms, 3).
+
+    Parameters
+    ----------
+    filename : str
+        Path to the QChem output file.
+    molecule : Structure
+        The molecule object whose derivative coupling is to be updated.
+    nst : int
+        The number of states being considered.
+
+    Returns
+    -------
+    np.ndarray
+        An array of shape (natoms, 3) containing the derivative coupling values.
+
+    Notes
+    -----
+    - Extracts the SF-CIS derivative coupling data from the QChem output.
+    - Ensures the extracted data is correctly reshaped to (natoms, 3).
+    """
+    natoms = len(molecule.symbols)  # Number of atoms
+    coupling_data = []
+    found_coupling = False
+
+    with open(filename, 'r') as f:
+        for line in f:
+            if "SF-CIS derivative coupling with ETF" in line:
+                found_coupling = True
+                next(f)  # Skip the header line
+                next(f)
+                continue
+            
+            if found_coupling:
+                if line.strip() == "":
+                    break  # Stop at an empty line
+                parts = line.split()
+                if len(parts) == 4:  # Expecting format: atom_index x y z
+                    _, x, y, z = parts
+                    coupling_data.append([float(x), float(y), float(z)])
+
+    if not found_coupling:
+        raise ValueError("SF-CIS derivative coupling section not found in the output.")
+
+    # Convert to numpy array
+    coupling_array = np.array(coupling_data, dtype=float)
+
+    # Ensure correct shape (natoms, 3)
+    if coupling_array.shape != (natoms, 3):
+        raise ValueError(f"Incorrect derivative coupling shape: {coupling_array.shape}, expected ({natoms}, 3)")
+    molecule.coupling = coupling_array
+
+    return coupling_array
 
 def initial_conditions(symbols,coords,cores):
     """

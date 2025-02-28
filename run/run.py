@@ -81,6 +81,7 @@ if __name__=="__main__":
         os.mkdir(EXDIR1+"/rep-"+str(i+1))
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/output")
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/tmp")
+        os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/checks")
         if(inputs["run"]["Geom_flg"] ==0):
             shutil.copy2("../"+inputs["run"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["run"]["Geom_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
     if HPCFLG==1:
@@ -122,7 +123,7 @@ if __name__=="__main__":
         file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=8G,h_rt=15:00:00 \n")
+        f.write("#$ -l h_vmem=8G,h_rt=24:00:00 \n")
         f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
         f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")

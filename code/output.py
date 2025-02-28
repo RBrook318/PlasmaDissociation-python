@@ -13,6 +13,9 @@ The following functions are available in this module:
 - output_momenta: Writes the momenta of the molecule to a file.
 - output_forces: Outputs forces and additional properties of the molecule to a file.
 """
+import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 def output_molecule(molecule): 
     """
@@ -41,7 +44,75 @@ def output_molecule(molecule):
     output_xyz(molecule)
     output_momenta(molecule)
     output_forces(molecule)
+    output_time(molecule)
     molecule.to_json('output/molecule.json')
+
+def run_checks(molecule):
+    """
+    Runs the overall checks for the molecule.
+
+    Parameters
+    ----------
+    molecule : Molecule
+        The Molecule instance whose coordinates are to be written.
+    
+    
+    """
+    forces_magnitudes(molecule)
+
+def forces_magnitudes(molecule):
+    # List to store indices of atoms that have not dissociated
+    shrunk_index = []
+    natoms = len(molecule.symbols)
+    
+    # Identifying atoms that have not dissociated
+    for i in range(natoms): 
+        if molecule.dissociation_flags[i] == 'NO':
+            shrunk_index.append(i)
+    
+    # Loop through atoms and calculate the force magnitudes
+    for j in range(len(shrunk_index)):
+        # Calculate the force magnitude (squared sum of force components)
+        force_magnitude = np.sqrt(np.sum(molecule.forces[j, :3,:]**2))  
+        print(type(force_magnitude))
+        # Save the force magnitude to a file named after the atom index
+        with open(f"checks/forcemagnitude_{shrunk_index[j]+1}.out", "a") as out_file:
+            out_file.write(f"{force_magnitude}\n")
+    
+    # After all files are written, we can plot the force magnitude evolution
+    plot_force_magnitudes()
+
+def plot_force_magnitudes(directory="checks"):
+    # Loop over all files in the directory
+    for filename in os.listdir(directory):
+        if filename.startswith("forcemagnitude_") and filename.endswith(".out"):
+            # Extract atom index from filename
+            atom_index = int(filename.split("_")[1].split(".")[0])
+
+            # Read the force magnitudes from the file
+            force_magnitudes = []
+            with open(os.path.join(directory, filename), 'r') as f:
+                for line in f:
+                    # Convert each line (force magnitude) to a float and add it to the list
+                    force_magnitudes.append(float(line.strip()))
+
+            # Create an x-axis representing the position in the file (time steps)
+            time_steps = np.arange(len(force_magnitudes))
+
+            # Plot the force magnitudes over time
+            plt.figure(figsize=(8, 6))
+            plt.plot(time_steps, force_magnitudes, label=f'Atom {atom_index}')
+            plt.xlabel('Time Step (Position in File)')
+            plt.ylabel('Force Magnitude')
+            plt.title(f'Force Magnitude Evolution for Atom {atom_index}')
+            plt.legend()
+            plt.grid(True)
+
+            # Save the plot as an image (optional)
+            plt.savefig(f"force_magnitude_atom_{atom_index+1}.png")
+            plt.close()
+    
+    
 
 
 def output_xyz(molecule):
@@ -130,13 +201,28 @@ def output_forces(molecule):
         # Write the SCF energy
         forces_file.write(f"SCF Energy: {molecule.scf_energy}\n")
 
-        # Write the forces
         forces_file.write("Forces:\n")
-        for force in molecule.forces:
-            forces_file.write(f"{force:.15f}\n")
+        for atom_idx in range(molecule.forces.shape[0]):  # Loop over atoms
+            forces_file.write(f"Atom {atom_idx + 1}:\n")
+            for state_idx in range(molecule.forces.shape[2]):  # Loop over states
+                fx, fy, fz = molecule.forces[atom_idx, :, state_idx]
+                forces_file.write(f"State {state_idx + 1}: {fx:.8f} {fy:.8f} {fz:.8f}\n")
+            if molecule.coupling[0,0]!=0:
+                cx, cy, cz = molecule.coupling[atom_idx, :]
+                forces_file.write(f"Coupling: {cx:.8f} {cy:.8f} {cz:.8f}\n")
 
         # Write dissociation information
         forces_file.write(f"Dissociation Flags: {molecule.dissociation_flags}\n")
 
         # Write a dashed line as a separator
         forces_file.write("-" * 40 + "\n")
+
+def output_time(molecule):
+     with open("output/time.all", "a") as times_file:
+        times_file.write(f"Timestep: {molecule.timestep}\n")
+        times_file.write(f"Time of this step: {molecule.time[1]}\n")
+        times_file.write(f"Time of QChem this step: {molecule.time[0]}\n")
+        times_file.write(f"Time of python this step: {molecule.time[1]-molecule.time[0]}\n")
+        times_file.write(f"Total time of propagation: {molecule.time[3]}s (average: {molecule.time[3]/molecule.time[4]}s) \n")
+        times_file.write(f"Total time of QChem: {molecule.time[2]} (average: {molecule.time[2]/molecule.time[4]}s)\n")
+        times_file.write("-" * 40 + "\n")

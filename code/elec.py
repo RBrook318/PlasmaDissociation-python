@@ -6,7 +6,7 @@
 
 # Currently supported electronic structure methods: QChem, PySCF, and GPUPySCF
 
-def run_elec_structure(molecule, ncpu,nstates, spin_flip, method, Guess):
+def run_elec_structure(molecule, ncpu,nstates, spin_flip, method, Guess,basis):
     """
     Executes an electronic structure calculation on a molecule using a specified method.
 
@@ -39,7 +39,7 @@ def run_elec_structure(molecule, ncpu,nstates, spin_flip, method, Guess):
     """
     if method == 'QChem':
         import qchem as qc
-        qc.run_qchem(ncpu, molecule, nstates, spin_flip, Guess=Guess)
+        qc.run_qchem(ncpu, molecule, nstates, spin_flip,basis=basis, Guess=Guess,)
     elif method == 'PySCF': 
         import elec_pyscf as pyscf
         pyscf.run_pySCF(molecule, Guess)
