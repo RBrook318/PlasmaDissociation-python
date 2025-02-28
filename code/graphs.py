@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import json
 
-def plot_data(filename, label,  color, total_trajectories):
+def plot_data(filename, label, no_bonds, color, total_trajectories):
     """
     Plots the average number of bonds broken per trajectory from data in a specified file.
 
@@ -38,10 +38,10 @@ def plot_data(filename, label,  color, total_trajectories):
         cumulative_bonds[i] = cumulative_bonds[i - 1] + 1 if i > 0 else 1
 
     # Calculate average number of bonds broken
-    avg_bonds = [count / (total_trajectories) for count in cumulative_bonds]
+    percentage_bonds = 100*[count/(total_trajectories*no_bonds) for count in cumulative_bonds]
 
     # Plot average number of bonds broken
-    plt.plot(timesteps, avg_bonds, label=label, color=color)
+    plt.plot(timesteps, percentage_bonds, label=label, color=color)
 
 def generate_graphs_from_json(json_file):
     """
@@ -79,7 +79,7 @@ def generate_graphs_from_json(json_file):
         for file_info in graph_data['files']:
             # Adjust the path to look for the files in ../results/bonds/
             bond_file_path = file_info['filename']
-            plot_data(bond_file_path, file_info['label'], 
+            plot_data(bond_file_path, file_info['label'], file_info['no_bonds'],
                       file_info['color'], total_trajectories)
 
         # Set the graph labels and title

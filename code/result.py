@@ -202,7 +202,6 @@ def compile_results():
             with open(bond_number_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
 
-
 def fragments():
     """
     Analyzes the molecular structure from a JSON file to identify and categorize fragments 
@@ -320,7 +319,6 @@ def fragments():
         count_file.write("Fragment Formulas:\n")
         for formula, count in fragment_formulas.items():
             count_file.write(f"{formula}: {count}\n")
-
 
 def distance(point1, point2):
     x1, y1, z1 = point1[2:]
