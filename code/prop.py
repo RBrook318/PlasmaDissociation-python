@@ -606,3 +606,37 @@ def prop_diss(molecule, increment):
         molecule.coordinates[i, :] = molecule.coordinates[i, :] + increment * velocities[:]
 
     return molecule
+
+def align_coupling(coupling1: np.ndarray, coupling2: np.ndarray, threshold: float = 5e-3) -> np.ndarray:
+    """
+    Ensures that the sign of the coupling array remains consistent.
+    If the first element of coupling1 and coupling2 have opposite signs,
+    coupling2 is flipped. If the first element is too small, the next
+    non-negligible value is used for comparison.
+    
+    Parameters:
+    coupling1 (np.ndarray): Reference coupling array of shape (natoms, 3, nst, nst).
+    coupling2 (np.ndarray): Coupling array to be aligned, same shape as coupling1.
+    threshold (float): Minimum absolute value for considering sign flipping.
+    
+    Returns:
+    np.ndarray: The aligned coupling2 array.
+    """
+    if coupling1.shape != coupling2.shape:
+        raise ValueError("coupling1 and coupling2 must have the same shape")
+    
+    # Find the first non-negligible value for comparison
+    ref_value = None
+    compare_value = None
+    for index in np.ndindex(coupling1.shape):
+        if abs(coupling1[index]) > threshold and abs(coupling2[index]) > threshold:
+            ref_value = coupling1[index]
+            compare_value = coupling2[index]
+            break
+    
+    # Only proceed if valid reference values were found
+    if ref_value is not None and compare_value is not None:
+        if np.sign(ref_value) != np.sign(compare_value):
+            coupling2 = -coupling2  # Flip sign if needed
+    
+    return coupling2

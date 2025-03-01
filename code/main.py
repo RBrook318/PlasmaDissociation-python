@@ -136,6 +136,7 @@ def run_simulation(inputs, startstep, endstep, molecule1, molecule2, guess, basi
         time1 = time.time()
         molecule2 = prop.prop_1(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
         molecule2 = elec.run_elec_structure(molecule2, inputs["setup"]["cores"], inputs["run"]["States"], inputs["run"]["Spin_flip"], inputs["run"]["method"], Guess=guess,basis=basis)
+        molecule2.coupling = prop.align_coupling(molecule1.coupling, molecule2.coupling)
         molecule1.time[0] = molecule2.time[0]
         molecule1.time[2] = molecule2.time[2]
         molecule1.elecinfo = molecule2.elecinfo
