@@ -259,7 +259,7 @@ def create_empty_molecule(natoms, nst, spin_flip):
     masses = np.zeros(natoms, dtype=np.float64)
     return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity, masses=masses)
 
-def initialize_structure(nst, spin_flip,mult):
+def initialize_structure(nst, spin_flip,mult,start_state):
     """
     Reads molecular structure data from a file and initializes a molecule instance.
 
@@ -305,12 +305,8 @@ def initialize_structure(nst, spin_flip,mult):
     momentum_data = np.array([list(map(float, line.split())) for line in momentum_lines], dtype=np.float64)
 
     # Read amplitudes if present
-    if len(lines) > 2*natoms+1:
-        amplitudes_lines = lines[2*natoms+2:]  # Assuming amplitudes are two lines below "momentum"
-        amplitudes = list(map(float, amplitudes_lines))
-    else: 
-        amplitudes = np.zeros((nst), dtype=np.complex256)
-        amplitudes[0] = 1 + 0j
+    amplitudes = np.zeros((nst))
+    amplitudes[start_state-1] = 1 + 0j
 
     if spin_flip == 1:
         multiplicity = mult+2

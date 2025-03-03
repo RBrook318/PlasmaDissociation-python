@@ -93,11 +93,12 @@ def check_restart(endstep, increment):
 def initialize_simulation(inputs, restart,basis):
     """Initialize the molecular structure and handle restart logic."""
     nstates = inputs["run"]["States"]
+    start_state = inputs["run"]["Start_State"]
     spin_flip = inputs["run"]["Spin_flip"]
     mult = inputs["run"]["Multiplicity"]    
     time1 =time.time()
     if restart == 'NO':
-        molecule1 = initialize_structure(nstates, spin_flip, mult)
+        molecule1 = initialize_structure(nstates, spin_flip, mult,start_state)
         n = len(molecule1.symbols)
         molecule2 = create_empty_molecule(n, nstates, spin_flip)
         molecule1 = elec.run_elec_structure(molecule1, inputs["setup"]["cores"], nstates, spin_flip, inputs["run"]["method"], Guess=False, basis = basis)

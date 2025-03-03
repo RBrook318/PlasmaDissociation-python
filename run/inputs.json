@@ -11,6 +11,7 @@
         "Molecule":"C3H2F6",
         "States":2,
         "Multiplicity":3,
+        "Start_State": 2,
         "Basis":"6-31+G*",
         "Temp":5000,
         "Cutoff": 1,
