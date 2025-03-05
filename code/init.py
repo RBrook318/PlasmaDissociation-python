@@ -305,7 +305,7 @@ def initialize_structure(nst, spin_flip,mult,start_state):
     momentum_data = np.array([list(map(float, line.split())) for line in momentum_lines], dtype=np.float64)
 
     # Read amplitudes if present
-    amplitudes = np.zeros((nst))
+    amplitudes = np.zeros((nst), dtype=np.complex128)
     amplitudes[start_state-1] = 1 + 0j
 
     if spin_flip == 1:

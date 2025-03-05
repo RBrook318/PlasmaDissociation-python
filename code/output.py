@@ -109,7 +109,7 @@ def plot_force_magnitudes(directory="checks"):
             plt.grid(True)
 
             # Save the plot as an image (optional)
-            plt.savefig(f"force_magnitude_atom_{atom_index+1}.png")
+            plt.savefig(f"checks/force_magnitude_atom_{atom_index+1}.png")
             plt.close()
     
     
