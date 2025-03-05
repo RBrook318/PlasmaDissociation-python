@@ -1,14 +1,14 @@
 {
     "setup":{
-        "Runfolder":"aanewcouplingtest",
+        "Runfolder":"PPVE_example",
         "repeats":1,
         "cores":8,
         "restart":"NO",
         "initre":0
     },
     "run":{
-        "Geom_flg":0,
-        "Molecule":"C3H2F6",
+        "Geom_flg":1,
+        "Molecule":"1623-05-8",
         "States":2,
         "Multiplicity":3,
         "Start_State": 2,
@@ -17,7 +17,7 @@
         "Cutoff": 1,
         "Branches":0,
         "Timestep":10,
-        "Tot_timesteps":1,
+        "Tot_timesteps":2100,
         "Geom_start":1,
         "Spin_flip":1,
         "method": "QChem",
@@ -25,3 +25,6 @@
     }
 
 }
+
+
+

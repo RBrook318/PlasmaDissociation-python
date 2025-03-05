@@ -160,8 +160,9 @@ def main():
 
     # Check basic arguments
     basis = inputs["run"]["Basis"]
-    endstep = inputs["run"]["Tot_timesteps"]
     increment = inputs["run"]["Timestep"]
+    endstep = inputs["run"]["Tot_timesteps"]
+
     restart = check_restart(endstep, increment)
 
     molecule1, molecule2, startstep, guess = initialize_simulation(inputs, restart,basis)
