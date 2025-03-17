@@ -37,17 +37,15 @@ if __name__=="__main__":
     elif(inputs["setup"]["cores"]<1):
         sys.exit("Not enough cores selected. Must be 1 or greater")
 
-    if(inputs["run"]["Geom_flg"] not in{0,1}):
-        sys.exit("Geometry flag must be zero or 1")
+ 
+    print("Arguments checked")
+    Hostname=socket.gethostname()
+    if(Hostname==("login1.arc4.leeds.ac.uk")or(Hostname==("login2.arc4.leeds.ac.uk"))):
+        HPCFLG=1
+    elif(Hostname==("login1.arc3.leeds.ac.uk")or(Hostname==("login2.arc3.leeds.ac.uk"))):
+        HPCFLG=1 
     else:
-        print("Arguments checked")
-        Hostname=socket.gethostname()
-        if(Hostname==("login1.arc4.leeds.ac.uk")or(Hostname==("login2.arc4.leeds.ac.uk"))):
-            HPCFLG=1
-        elif(Hostname==("login1.arc3.leeds.ac.uk")or(Hostname==("login2.arc3.leeds.ac.uk"))):
-            HPCFLG=1 
-        else:
-            HPCFLG=0
+        HPCFLG=0
 
     if(HPCFLG==0):
         EXDIR="../EXEC"
@@ -74,16 +72,20 @@ if __name__=="__main__":
     os.mkdir(EXDIR1+"/results/specifics")
     os.mkdir(EXDIR1+"/results/graphs")
     os.mkdir(EXDIR1+"/setup")
+    if (inputs["run"]["Geom_flg"]) == "Initial":
+        shutil.copy2("../Initial_Geometry/"+inputs["run"]["Molecule"]+".txt",EXDIR1+"/setup/initial_guess.txt")
     os.mkdir(EXDIR1+"/setup/tmp")
     shutil.copy2("restart.py",EXDIR1)
     shutil.copy2("inputs.json",EXDIR1)
+
     for i in range(inputs["setup"]["repeats"]):
         os.mkdir(EXDIR1+"/rep-"+str(i+1))
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/output")
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/tmp")
         os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/checks")
-        if(inputs["run"]["Geom_flg"] ==0):
+        if(inputs["run"]["Geom_flg"] == "Full"):
             shutil.copy2("../"+inputs["run"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["run"]["Geom_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
+    
     if HPCFLG==1:
             shutil.copytree("../code", EXDIR1+'/code')
     if(inputs["run"]["Geom_flg"] ==0):
@@ -94,7 +96,7 @@ if __name__=="__main__":
     EXDIR1=os.getcwd()
     if HPCFLG == 1:
         # Makes Job Submission sctipt for initial setup
-        if(inputs["run"]["Geom_flg"] ==1):
+        if inputs["run"]["Geom_flg"] in ["PubChem", "Initial"]:
             file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
             f=open(file2,"w")
             f.write("#$ -cwd -V \n")
@@ -123,7 +125,7 @@ if __name__=="__main__":
         file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=8G,h_rt=24:00:00 \n")
+        f.write("#$ -l h_vmem=8G,h_rt="+str(inputs["setup"]["hours"])+":00:00 \n")
         f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
         f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
         f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
@@ -141,7 +143,7 @@ if __name__=="__main__":
             f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
+            f.write("export QCSCRATCH="+EXDIR1+"/rep-$SGE_TASK_ID \n")
         f.write("unset GOMP_CPU_AFFINITY KMP_AFFINITY \n")    
         f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
         f.write("python ./../code/main.py")
@@ -179,7 +181,7 @@ if __name__=="__main__":
         for i in range(inputs["setup"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
             if inputs["run"]["Geom_flg"] == 1:
-                subprocess.call(["python", "../../../code/setupnew.py"])
+                subprocess.call(["python", "../../../code/setup.py"])
             subprocess.call(["python", "../../../code/main.py"])
 
        

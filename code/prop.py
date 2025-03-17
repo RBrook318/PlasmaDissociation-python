@@ -21,8 +21,8 @@ Functions:
 
 import numpy as np
 from scipy.linalg import expm
-import init
 
+import output
 
 np.set_printoptions(precision=30)
 
@@ -445,12 +445,6 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
                 coupling_2[i,y,0,1] = shrunk_molecule2.coupling[i,y]  
                 coupling_2[i,y,1,0] = -shrunk_molecule2.coupling[i,y]  
 
-    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,coupling_1)
-    # print("Coupling difference:", coupling_1 - coupling_2)
-    Eham_2 = calculate_electronic_hamiltonian(shrunk_molecule2,velocities_2,coupling_2)
-    # print(Eham_1)
-    # print(Eham_2)
-
     ElPhase = np.ones(nst)  # Initialize ElPhase[1] = 1 (Fortran index 1 → Python index 0)
     for j in range(1, nst):  
         num = np.sum(coupling_1[:, :, 0, j] * coupling_2[:, :, 0, j])  # Selecting (natoms,) elements
@@ -462,10 +456,19 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
         # Warning condition
         if abs(val) < 0.5 and abs(shrunk_molecule2.amplitudes[j]) >= 0.35:
             print(f"!! Warning: the sign for state {j} is not reliable! {val:.4f}")
-    
     for i in range(1, nst):
         coupling_2[:,:,i,:] *= ElPhase[i]  # Apply phase to the second dimension
         coupling_2[:,:,:,i] *= ElPhase[i]  # Apply phase to the third dimension
+        molecule2.coupling = molecule2.coupling * ElPhase[i]
+
+    Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,coupling_1)
+    # print("Coupling difference:", coupling_1 - coupling_2)
+    Eham_2 = calculate_electronic_hamiltonian(shrunk_molecule2,velocities_2,coupling_2)
+    # print(Eham_1)
+    # print(Eham_2)
+
+
+
     
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), shrunk_molecule1.amplitudes)
     Energy_temp = 0.05 * shrunk_molecule2.scf_energy + 0.95 * shrunk_molecule1.scf_energy
@@ -503,11 +506,12 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule1.update_amplitudes(A1)
     shrunk_molecule1.update_timestep(shrunk_molecule2.timestep)
     restore_molecule(molecule1,shrunk_molecule1, shrunk_index)
-    molecule1.coupling = molecule2.coupling
+    molecule1.coupling = molecule2.coupling 
+
 
     return molecule1
 
-def fragments(molecule, spin_flip):
+def fragments(molecule, spin_flip,increment):
     """
     Analyzes and marks atoms in a molecule that meet dissociation criteria and
     updates multiplicity based on the presence of a spin flip.
@@ -560,6 +564,7 @@ def fragments(molecule, spin_flip):
     if to_remove:
         molecule.forces = np.delete(molecule.forces, to_remove, axis=0)
         molecule.coupling = np.delete(molecule.coupling, to_remove,axis=0)
+        output.output_fragment_time(molecule.timestep/increment)
 
     return molecule, dissociated
 
@@ -607,36 +612,3 @@ def prop_diss(molecule, increment):
 
     return molecule
 
-def align_coupling(coupling1: np.ndarray, coupling2: np.ndarray, threshold: float = 5e-3) -> np.ndarray:
-    """
-    Ensures that the sign of the coupling array remains consistent.
-    If the first element of coupling1 and coupling2 have opposite signs,
-    coupling2 is flipped. If the first element is too small, the next
-    non-negligible value is used for comparison.
-    
-    Parameters:
-    coupling1 (np.ndarray): Reference coupling array of shape (natoms, 3, nst, nst).
-    coupling2 (np.ndarray): Coupling array to be aligned, same shape as coupling1.
-    threshold (float): Minimum absolute value for considering sign flipping.
-    
-    Returns:
-    np.ndarray: The aligned coupling2 array.
-    """
-    if coupling1.shape != coupling2.shape:
-        raise ValueError("coupling1 and coupling2 must have the same shape")
-    
-    # Find the first non-negligible value for comparison
-    ref_value = None
-    compare_value = None
-    for index in np.ndindex(coupling1.shape):
-        if abs(coupling1[index]) > threshold and abs(coupling2[index]) > threshold:
-            ref_value = coupling1[index]
-            compare_value = coupling2[index]
-            break
-    
-    # Only proceed if valid reference values were found
-    if ref_value is not None and compare_value is not None:
-        if np.sign(ref_value) != np.sign(compare_value):
-            coupling2 = -coupling2  # Flip sign if needed
-    
-    return coupling2

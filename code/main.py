@@ -130,27 +130,27 @@ def initialize_simulation(inputs, restart,basis):
     molecule1.time[0] = 0
     return molecule1, molecule2, 1, True
 
-def run_simulation(inputs, startstep, endstep, molecule1, molecule2, guess, basis):
+def run_simulation(inputs, startstep, endstep, molecule1, molecule2, Checks, guess, basis):
     """Run the main simulation loop for the specified number of timesteps."""
     n = len(molecule1.symbols)
     for i in range(int(startstep), endstep + 1):
         time1 = time.time()
         molecule2 = prop.prop_1(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
         molecule2 = elec.run_elec_structure(molecule2, inputs["setup"]["cores"], inputs["run"]["States"], inputs["run"]["Spin_flip"], inputs["run"]["method"], Guess=guess,basis=basis)
-        molecule2.coupling = prop.align_coupling(molecule1.coupling, molecule2.coupling)
         molecule1.time[0] = molecule2.time[0]
         molecule1.time[2] = molecule2.time[2]
         molecule1.elecinfo = molecule2.elecinfo
 
         molecule1 = prop.prop_2(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
-        molecule1, dissociated = prop.fragments(molecule1, inputs["run"]["Spin_flip"])
+        molecule1, dissociated = prop.fragments(molecule1, inputs["run"]["Spin_flip"], inputs["run"]["Timestep"])
         molecule1 = prop.prop_diss(molecule1, inputs["run"]["Timestep"])
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
         molecule1.time[4] = molecule1.timestep/inputs["run"]["Timestep"]
         out.output_molecule(molecule1)
-        out.run_checks(molecule1)
+        if Checks == 1:
+            out.run_checks(molecule1)
         molecule1.time[0] = 0
         guess = dissociated == 0  # Update guess based on dissociation
         
@@ -160,14 +160,14 @@ def main():
 
     # Check basic arguments
     basis = inputs["run"]["Basis"]
-    increment = inputs["run"]["Timestep"]
     endstep = inputs["run"]["Tot_timesteps"]
-
+    increment = inputs["run"]["Timestep"]
+    checks = inputs["run"]["Checks"]
     restart = check_restart(endstep, increment)
 
     molecule1, molecule2, startstep, guess = initialize_simulation(inputs, restart,basis)
 
-    run_simulation(inputs, startstep, endstep, molecule1, molecule2, guess, basis)
+    run_simulation(inputs, startstep, endstep, molecule1, molecule2, checks, guess, basis)
 
     result.process_results()
 

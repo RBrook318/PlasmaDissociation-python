@@ -318,11 +318,13 @@ def run_qchem(ncpu, molecule, nstates, spin_flip, basis, Guess=True):
             
             qc_inp=create_qchemforces_input(molecule, spin_flip, scf_algorithm="DIIS_GDM", Guess=False,excited_state=state,number_of_states=nstates,basis = basis)
             try:
+                qtime2= time.time()
+                molecule.time[0] += qtime2-qtime1
+                molecule.time[2] += qtime2-qtime1
                 qtime1 = time.time()
                 output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=True)
                 molecule.elecinfo=(ee['coefficients'])
                 qtime2= time.time()
-                print(qtime2-qtime1)
                 molecule.time[0] += qtime2-qtime1
                 molecule.time[2] += qtime2-qtime1
                 with open("f.all", "a") as f_all:
@@ -335,18 +337,36 @@ def run_qchem(ncpu, molecule, nstates, spin_flip, basis, Guess=True):
         # Job completed successfully
         readqchemforces(output, molecule,state,spin_flip)
 
-    if nstates>1:
-        create_qchem_nac_input(molecule, scf_algorithm="DIIS", Guess=Guess,basis = basis,total_states=nstates)
+    if nstates > 1:
+        # First attempt using DIIS
+        create_qchem_nac_input(molecule, scf_algorithm="DIIS", Guess=Guess, basis=basis, total_states=nstates)
         qtime1 = time.time()
         subprocess.run(["qchem", "-save", "-nt", str(ncpu), "ec.inp", "ec.out", "wf"])
-        qtime2= time.time()
-        molecule.time[0] += qtime2-qtime1
-        molecule.time[2] += qtime2-qtime1
-        readqchemnac('ec.out',molecule,nstates)
+        qtime2 = time.time()
+        molecule.time[0] += qtime2 - qtime1
+        molecule.time[2] += qtime2 - qtime1
+
+        try:
+            readqchemnac('ec.out', molecule, nstates)
+        except ValueError:
+            # If NAC section not found, retry with DIIS_GDM
+            print("Derivative coupling not found, retrying with DIIS_GDM...")
+            create_qchem_nac_input(molecule, scf_algorithm="DIIS_GDM", Guess=False, basis=basis, total_states=nstates)
+            qtime1 = time.time()
+            subprocess.run(["qchem", "-save", "-nt", str(ncpu), "ec.inp", "ec.out", "wf"])
+            qtime2 = time.time()
+            molecule.time[0] += qtime2 - qtime1
+            molecule.time[2] += qtime2 - qtime1
+            
+            try:
+                readqchemnac('ec.out', molecule, nstates)
+            except ValueError:
+                raise ValueError("SF-CIS derivative coupling not found even after retrying with DIIS_GDM.")
+
         with open("ec.out", "r") as ec_file, open("ec.all", "a") as ec_all:
             ec_all.write(ec_file.read())
             ec_all.write("---------------------------------------------------\n")
-    print(molecule.time[0])
+
 
     return molecule
 

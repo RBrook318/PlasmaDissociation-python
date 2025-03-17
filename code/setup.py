@@ -2,7 +2,8 @@ import numpy as np
 import json
 import pubchempy as pcp
 import init
-# from chemformula import ChemFormula
+from scipy.spatial.distance import pdist, squareform
+import os
 
 def create_geom(n,nmod,T,modes,m,mom_num):
     Ax = modes[:,0]
@@ -19,7 +20,6 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     rv = np.zeros((nmod, mom_num))
     for i in range(nmod):
         for j in range(n):
-            print(m[j])
             Meff[i] = Meff[i]+np.sum(((Ax[j, i]**2) + (Ay[j, i]**2) + (Az[j, i]**2)) * m[j])
         rv[i, :] = rn[i, :] * np.sqrt(2 * T / Meff[i])
     # Calculate the velocity by applying it through the tranformation matrix of normal modes.
@@ -36,7 +36,163 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     
     return Px, Py, Pz
 
-def get_geometry(molecule_name):
+def get_geometry_file():
+
+    symbols = []
+    coordinates = []
+    print(os.getcwd())
+    with open("initial_guess.txt", "r") as file:
+        for line in file:
+            parts = line.split()
+            if len(parts) == 4:  # Ensuring correct format
+                symbols.append(parts[0])  # Atomic symbol
+                x, y, z = map(float, parts[1:])
+                coordinates.append([x * 1.88973, y * 1.88973, z * 1.88973])  # Convert to Bohr
+
+
+    return symbols, coordinates
+
+import numpy as np
+
+
+
+def momenta_checks(Px, Py, Pz, symbols, temperature, output_file="momentum_checks.txt"):
+    """
+    Calculate the kinetic energy for each repeat, compare it to the expected value,
+    and calculate the average magnitude of momentum for each atom across all repeats.
+    Results are saved to a file.
+
+    Parameters:
+        Px, Py, Pz (np.ndarray): Momenta in x, y, z directions (shape: [natoms, repeats]).
+        symbols (list): List of atomic symbols (e.g., ['H', 'C', 'O']).
+        temperature (float): Temperature in Kelvin.
+        output_file (str): File to save the results.
+    """
+    natoms = Px.shape[0]  # Number of atoms
+    repeats = Px.shape[1]  # Number of repeats
+
+    # Get the masses of the atoms from the ATOMIC_MASSES dictionary
+    masses = init.setup_masses(symbols)
+
+    # Initialize variables to store kinetic energy for each repeat
+    kinetic_energies = np.zeros(repeats)
+
+    # Loop through each repeat
+    for j in range(repeats):
+        file_kinetic_energy = 0.0  # Initialize kinetic energy for the current repeat
+        for i in range(natoms):
+            # Calculate the magnitude of the momentum vector
+            magnitude = np.sqrt(Px[i, j]**2 + Py[i, j]**2 + Pz[i, j]**2)
+
+            # Calculate the kinetic energy for this atom
+            kinetic_energy = 0.5 * (magnitude**2 / masses[i])
+
+            # Add the kinetic energy to the total for this repeat
+            file_kinetic_energy += kinetic_energy
+
+        # Store the total kinetic energy for this repeat
+        kinetic_energies[j] = file_kinetic_energy
+
+    # Calculate the average kinetic energy across all repeats
+    average_kinetic_energy = np.mean(kinetic_energies)
+
+    # Calculate the expected kinetic energy based on the equation
+    # Expected KE = (3N - 6) * 0.5 * kT, where k = 3.16881e-6 (atomic units)
+    expected_ke = (3 * natoms - 6) * 3.16881e-6 * temperature
+
+    # Calculate the average magnitude of momentum for each atom across all repeats
+    avg_momentum_magnitude = np.zeros(natoms)
+    for i in range(natoms):
+        total_momentum_magnitude = 0.0
+        for j in range(repeats):
+            total_momentum_magnitude += np.sqrt(Px[i, j]**2 + Py[i, j]**2 + Pz[i, j]**2)
+        avg_momentum_magnitude[i] = total_momentum_magnitude / repeats
+
+    # Write results to a file
+    with open(output_file, "w") as file:
+        file.write("Kinetic Energy Checks:\n")
+        file.write(f"Expected Kinetic Energy: {expected_ke:.6f}\n")
+        file.write(f"Average Kinetic Energy: {average_kinetic_energy:.6f}\n")
+        file.write("Average Momentum Magnitude per Atom:\n")
+        for i in range(natoms):
+            file.write(f"Atom {i+1} ({symbols[i]}): {avg_momentum_magnitude[i]:.6f}\n")
+        for j in range(repeats):
+            file.write(f"Repeat {j+1}:\n")
+            file.write(f"  Kinetic Energy: {kinetic_energies[j]:.6f}\n")
+            if np.isclose(kinetic_energies[j], expected_ke, rtol=0.1*expected_ke):
+                file.write("  Kinetic Energy check passed.\n")
+            else:
+                file.write("  Kinetic Energy check failed.\n")
+        file.write("\n")
+
+
+
+    # Print results to console for verification
+    print(f"Expected Kinetic Energy: {expected_ke:.6f}")
+    print(f"Average Kinetic Energy: {average_kinetic_energy:.6f}")
+    for j in range(repeats):
+        print(f"Repeat {j+1}:")
+        print(f"  Kinetic Energy: {kinetic_energies[j]:.6f}")
+        if np.isclose(kinetic_energies[j], expected_ke, rtol=1e-2):
+            print("  Kinetic Energy check passed.")
+        else:
+            print("  Kinetic Energy check failed.")
+    print("\nAverage Momentum Magnitude per Atom:")
+    for i in range(natoms):
+        print(f"Atom {i+1} ({symbols[i]}): {avg_momentum_magnitude[i]:.6f}")
+
+    print(f"\nResults saved to {output_file}.")
+
+
+
+def generate_bondarr(symbols, coordinates):
+
+    BOND_THRESHOLDS = {
+        ("C", "C"): [(2.7401, "C=C"), (3.25, "C-C")],  # 1.45 Å and 1.70 Å * 1.88973 for C=C and C-C
+        ("C", "F"): [(2.8346, "C-F")],  # 1.50 Å * 1.88973
+        ("C", "H"): [(2.1732, "C-H")],  # 1.15 Å * 1.88973
+        ("C", "O"): [(2.75, "C-O")],  # 1.43 Å * 1.88973
+        ("O", "H"): [(2.0, "O-H")],  # 1.00 Å * 1.88973
+        ("H", "O"): [(2.0, "O-H")],  # 1.00 Å * 1.88973
+    }   
+
+    natoms = len(symbols)
+
+    # Compute pairwise distances
+    distances = squareform(pdist(coordinates))  # Already in Bohr
+
+    with open("../results/bondarr.txt", "w") as file:
+        for i in range(natoms):
+            for j in range(i + 1, natoms):
+                elem1, elem2 = symbols[i], symbols[j]
+                d = distances[i, j]  # Distance between atom i and j in Bohr
+                
+                # Print the distance for C-C and O-H bonds
+                if elem1 == 'C' and elem2 == 'C':
+                    print(f"C-C bond distance: {d:.4f} Bohr")
+                if elem1 == 'O' and elem2 == 'H':
+                    print(f"O-H bond distance: {d:.4f} Bohr")
+                
+                # Sort elements alphabetically to match dictionary keys
+                key = tuple(sorted((elem1, elem2)))
+        
+                # Check if bond exists in dictionary
+                if key in BOND_THRESHOLDS:
+                    print(key)
+                    # Loop through possible bond types for this pair
+                    for max_dist, bond_type in BOND_THRESHOLDS[key]:
+                        if d <= max_dist:
+                            # Write bond type to file
+                            file.write(f"{i+1}-{j+1}:{bond_type}\n")
+                            
+                            # Print the distance for C-C and O-H bonds
+                            if bond_type == "C-C" or bond_type == "O-H":
+                                print(f"Bond: {elem1}-{elem2} | Distance: {d:.4f} Bohr | Type: {bond_type}")
+    
+    print("bondarr.txt successfully written!")
+
+
+def get_geometry_pubchem(molecule_name):
     search = pcp.get_compounds(molecule_name, 'name', record_type='3d')
     print(search)
     molecule = search[0]
@@ -74,7 +230,6 @@ def get_geometry(molecule_name):
 
 def organise_modes(modes,atoms):
     numeric_modes = np.zeros((len(modes)*atoms, 3))
-    print(modes[0])
     cnt=0
     for i in range(len(modes)):
         for j in range(atoms):
@@ -88,7 +243,12 @@ def organise_modes(modes,atoms):
 if __name__ == "__main__":
     with open('../inputs.json') as f:
         inputs=json.load(f)
-    symbols,coordinates = get_geometry(inputs["run"]["Molecule"])
+    if inputs["run"]["Geom_flg"] == "PubChem":
+        symbols,coordinates = get_geometry_pubchem(inputs["run"]["Molecule"])
+    elif inputs["run"]["Geom_flg"] == "Initial":
+        print("Running the new functions")
+        symbols,coordinates = get_geometry_file()
+        generate_bondarr(symbols, coordinates)
     if inputs["run"]["method"] == "QChem":
         import qchem as qc
         opt_coords, modes = qc.initial_conditions(symbols,coordinates,inputs['setup']['cores'])
@@ -103,6 +263,7 @@ if __name__ == "__main__":
     modes=organise_modes(modes,natoms)
     masses = init.setup_masses(symbols)
     Px, Py, Pz = create_geom(natoms,num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
+    momenta_checks(Px,Py,Pz,symbols,inputs["run"]["Temp"])
     for j in range(inputs["setup"]["repeats"]):
         with open('../rep-'+str(j+1)+'/Geometry', 'w') as file:
             file.write(opt_coords)

@@ -41,10 +41,10 @@ def run_elec_structure(molecule, ncpu,nstates, spin_flip, method, Guess,basis):
         import qchem as qc
         qc.run_qchem(ncpu, molecule, nstates, spin_flip,basis=basis, Guess=Guess,)
     elif method == 'PySCF': 
-        import pyscf as pyscf
+        import elec_pyscf as pyscf
         pyscf.run_pySCF(molecule, Guess)
     elif method == 'GPUPySCF':
-        import pyscf as pyscf
+        import elec_pyscf as pyscf
         pyscf.run_pySCF(molecule, Guess, use_gpu=True)
     else:
         raise ValueError(f"Unsupported method: {method}. Choose from 'QChem', 'PySCF', or 'GPUPySCF'.")

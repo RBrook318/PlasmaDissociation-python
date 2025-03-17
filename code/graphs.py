@@ -38,7 +38,7 @@ def plot_data(filename, label, no_bonds, color, total_trajectories):
         cumulative_bonds[i] = cumulative_bonds[i - 1] + 1 if i > 0 else 1
 
     # Calculate average number of bonds broken
-    percentage_bonds = 100*[count/(total_trajectories*no_bonds) for count in cumulative_bonds]
+    percentage_bonds = [100*count/(total_trajectories*no_bonds) for count in cumulative_bonds]
 
     # Plot average number of bonds broken
     plt.plot(timesteps, percentage_bonds, label=label, color=color)
