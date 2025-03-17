@@ -205,6 +205,14 @@ def output_forces(molecule):
     -------
     None
     """
+        # List to store indices of atoms that have not dissociated
+    shrunk_index = []
+    natoms = len(molecule.symbols)
+    
+    # Identifying atoms that have not dissociated
+    for i in range(natoms): 
+        if molecule.dissociation_flags[i] == 'NO':
+            shrunk_index.append(i)
     with open("output/forces.all", "a") as forces_file:
         # Write the timestep
         forces_file.write(f"Timestep: {molecule.timestep}\n")
@@ -219,7 +227,7 @@ def output_forces(molecule):
 
         forces_file.write("Forces:\n")
         for atom_idx in range(molecule.forces.shape[0]):  # Loop over atoms
-            forces_file.write(f"Atom {atom_idx + 1}:\n")
+            forces_file.write(f"Atom {shrunk_index[atom_idx]+ 1}:\n")
             for state_idx in range(molecule.forces.shape[2]):  # Loop over states
                 fx, fy, fz = molecule.forces[atom_idx, :, state_idx]
                 forces_file.write(f"State {state_idx + 1}: {fx:.8f} {fy:.8f} {fz:.8f}\n")
