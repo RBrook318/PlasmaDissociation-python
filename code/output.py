@@ -47,7 +47,7 @@ def output_molecule(molecule):
     output_time(molecule)
     molecule.to_json('output/molecule.json')
 
-def run_checks(molecule):
+def run_checks(molecule, old_coordinates):
     """
     Runs the overall checks for the molecule.
 
@@ -59,80 +59,11 @@ def run_checks(molecule):
     
     """
     forces_magnitudes(molecule)
+    check_total_energy(molecule)
+    displacement_vector(molecule, old_coordinates)
 
-def forces_magnitudes(molecule):
-    # List to store indices of atoms that have not dissociated
-    shrunk_index = []
-    natoms = len(molecule.symbols)
-    
-    # Identifying atoms that have not dissociated
-    for i in range(natoms): 
-        if molecule.dissociation_flags[i] == 'NO':
-            shrunk_index.append(i)
-    
-    # Loop through atoms and calculate the force magnitudes
-    for j in range(len(shrunk_index)):
-        # Calculate the force magnitude (squared sum of force components)
-        force_magnitude = np.sqrt(np.sum(molecule.forces[j, :3,:]**2))  
-        print(type(force_magnitude))
-        # Save the force magnitude to a file named after the atom index
-        with open(f"checks/forcemagnitude_{shrunk_index[j]+1}.out", "a") as out_file:
-            out_file.write(f"{force_magnitude}\n")
-    
-    # After all files are written, we can plot the force magnitude evolution
-    plot_force_magnitudes()
 
-def plot_force_magnitudes(directory="checks"):
-    # Attempt to read fragment-time.out if it exists
-    fragment_timesteps = []
-    fragment_file = os.path.join(directory, "fragment-time.out")
-    
-    if os.path.exists(fragment_file):
-        with open(fragment_file, 'r') as f:
-            for line in f:
-                # Convert each timestep to an integer and store it
-                fragment_timesteps.extend(map(lambda x: int(float(x)), line.split()))
 
-    
-    # Loop over all relevant files in the directory
-    for filename in os.listdir(directory):
-        if filename.startswith("forcemagnitude_") and filename.endswith(".out"):
-            # Extract atom index from filename
-            atom_index = int(filename.split("_")[1].split(".")[0])
-
-            # Read the force magnitudes from the file
-            force_magnitudes = []
-            with open(os.path.join(directory, filename), 'r') as f:
-                for line in f:
-                    # Convert each line (force magnitude) to a float and add it to the list
-                    force_magnitudes.append(float(line.strip()))
-            # Create an x-axis representing the position in the file (time steps)
-            time_steps = np.arange(len(force_magnitudes))
-
-            # Plot the force magnitudes over time
-            plt.figure(figsize=(8, 6))
-            plt.plot(time_steps, force_magnitudes, label=f'Atom {atom_index}', color='b')
-            plt.xlabel('Time Step (Position in File)')
-            plt.ylabel('Force Magnitude')
-            plt.title(f'Force Magnitude Evolution for Atom {atom_index}')
-            plt.legend()
-            plt.grid(True)
-
-            # If fragment timesteps exist, mark them on the graph
-            if fragment_timesteps:
-                for t in fragment_timesteps:
-                    if 0 <= t < len(force_magnitudes):  # Ensure the timestep is within range
-                        plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
-
-                # Ensure the legend only contains one label for fragmentation events
-                handles, labels = plt.gca().get_legend_handles_labels()
-                unique_labels = dict(zip(labels, handles))
-                plt.legend(unique_labels.values(), unique_labels.keys())
-
-            # Save the plot as an image
-            plt.savefig(f"{directory}/force_magnitude_atom_{atom_index}.png")
-            plt.close()
-    
 def output_xyz(molecule):
     """
     Writes the XYZ coordinates of the Molecule instance to a file.
@@ -206,13 +137,11 @@ def output_forces(molecule):
     None
     """
         # List to store indices of atoms that have not dissociated
-    shrunk_index = []
     natoms = len(molecule.symbols)
     
     # Identifying atoms that have not dissociated
-    for i in range(natoms): 
-        if molecule.dissociation_flags[i] == 'NO':
-            shrunk_index.append(i)
+    shrunk_index = np.where(np.array(molecule.dissociation_flags) == 'NO')[0]
+
     with open("output/forces.all", "a") as forces_file:
         # Write the timestep
         forces_file.write(f"Timestep: {molecule.timestep}\n")
@@ -232,7 +161,7 @@ def output_forces(molecule):
                 fx, fy, fz = molecule.forces[atom_idx, :, state_idx]
                 forces_file.write(f"State {state_idx + 1}: {fx:.8f} {fy:.8f} {fz:.8f}\n")
             # Check if the coupling array is all zeros
-            if not np.all(molecule.coupling == 0):  # Only write coupling if nonzero
+            if len(molecule.scf_energy) > 1: # Only write coupling if nonzero
                 cx, cy, cz = molecule.coupling[atom_idx, :]
                 forces_file.write(f"Coupling: {cx:.8f} {cy:.8f} {cz:.8f}\n")
 
@@ -255,3 +184,243 @@ def output_time(molecule):
 def output_fragment_time(timestep):
     with open("checks/fragment-time.out", "a") as time_file:
         time_file.write(f"{timestep}\n")
+
+def check_total_energy(molecule):
+    # Fixed directory path
+    energy_dir = "checks/energy"
+    
+    # Ensure the directory exists
+    os.makedirs(energy_dir, exist_ok=True)
+
+    # Identifying non-dissociated atoms
+    shrunk_index = np.where(np.array(molecule.dissociation_flags) == 'NO')[0]
+    # Compute potential energy
+    potential_energy = np.sum(molecule.scf_energy * np.abs(molecule.amplitudes) ** 2)
+
+    # Compute kinetic energy (vectorized)
+    kinetic_energy = 0.5 * np.sum((molecule.momenta[shrunk_index] ** 2) / molecule.masses[shrunk_index, np.newaxis])
+
+    # Total energy
+    total_energy = potential_energy + kinetic_energy
+
+    # Write total energy to file (append mode to track evolution)
+    energy_file = os.path.join(energy_dir, "total_energy.out")
+    with open(energy_file, "a") as f:
+        f.write(f"{total_energy:.10f}\n")
+
+    # Read total energy values
+    total_energy_values = []
+    with open(energy_file, "r") as f:
+        for line in f:
+            total_energy_values.append(float(line.strip()))
+
+    # Read fragmentation timesteps
+    fragment_timesteps = []
+    fragment_file = "checks/fragment-time.out"  # Fixed location
+    
+    if os.path.exists(fragment_file):
+        with open(fragment_file, 'r') as f:
+            for line in f:
+                fragment_timesteps.extend(map(lambda x: int(float(x)), line.split()))
+
+    # Generate time steps based on the energy values read
+    time_steps = np.arange(len(total_energy_values))
+
+    # Plot total energy evolution
+    plt.figure(figsize=(8, 6))
+    plt.plot(time_steps, total_energy_values, label="Total Energy", color='b')
+    plt.xlabel('Time Step')
+    plt.ylabel('Total Energy')
+    plt.title('Total Energy Evolution')
+    plt.legend()
+    plt.grid(True)
+
+    # Mark fragmentation events
+    if fragment_timesteps:
+        for t in fragment_timesteps:
+            if 0 <= t < len(total_energy_values):  # Ensure the timestep is within range
+                plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
+
+        # Ensure the legend only contains one label for fragmentation events
+        handles, labels = plt.gca().get_legend_handles_labels()
+        unique_labels = dict(zip(labels, handles))
+        plt.legend(unique_labels.values(), unique_labels.keys())
+
+    # Save the plot
+    plt.savefig(os.path.join(energy_dir, "total_energy_evolution.png"))
+    plt.close()
+    
+def forces_magnitudes(molecule):
+    # Define the fixed directory path
+    forces_dir = "checks/forces"
+    
+    # Ensure the directory exists
+    os.makedirs(forces_dir, exist_ok=True)
+
+    # List to store indices of atoms that have not dissociated
+ 
+    shrunk_index = np.where(np.array(molecule.dissociation_flags) == 'NO')[0]
+
+    # Loop through non-dissociated atoms and calculate force magnitudes
+    for j in shrunk_index:
+        # Calculate force magnitude (L2 norm)
+        force_magnitude = np.sqrt(np.sum(molecule.forces[j, :3, :]**2))
+
+        # Save the force magnitude to a file named after the atom index
+        with open(os.path.join(forces_dir, f"forcemagnitude_{j+1}.out"), "a") as out_file:
+            out_file.write(f"{force_magnitude}\n")
+
+    # Plot force magnitudes after writing files
+    plot_force_magnitudes(forces_dir)
+
+def plot_force_magnitudes(directory="checks/forces"):
+
+    # Ensure the directory exists
+    os.makedirs(directory, exist_ok=True)
+
+    # Read fragment-time.out if it exists
+    fragment_timesteps = []
+    fragment_file = os.path.join(directory, "../fragment-time.out")  # Assumed to be in 'checks/'
+    
+    if os.path.exists(fragment_file):
+        with open(fragment_file, 'r') as f:
+            for line in f:
+                fragment_timesteps.extend(map(lambda x: int(float(x)), line.split()))
+
+    # Loop over all relevant files in the directory
+    for filename in os.listdir(directory):
+        if filename.startswith("forcemagnitude_") and filename.endswith(".out"):
+            # Extract atom index from filename
+            atom_index = int(filename.split("_")[1].split(".")[0])
+
+            # Read the force magnitudes from the file
+            force_magnitudes = np.loadtxt(os.path.join(directory, filename))
+            force_magnitudes = np.atleast_1d(force_magnitudes)
+            # Create an x-axis representing time steps
+            time_steps = np.arange(len(force_magnitudes))
+
+            # Plot force magnitudes over time
+            plt.figure(figsize=(8, 6))
+            plt.plot(time_steps, force_magnitudes, label=f'Atom {atom_index}', color='b')
+            plt.xlabel('Time Step')
+            plt.ylabel('Force Magnitude')
+            plt.title(f'Force Magnitude Evolution for Atom {atom_index}')
+            plt.legend()
+            plt.grid(True)
+
+            # Mark fragmentation events
+            if fragment_timesteps:
+                for t in fragment_timesteps:
+                    if 0 <= t < len(force_magnitudes):  
+                        plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
+
+                # Ensure the legend contains unique labels
+                handles, labels = plt.gca().get_legend_handles_labels()
+                unique_labels = dict(zip(labels, handles))
+                plt.legend(unique_labels.values(), unique_labels.keys())
+
+            # Save the plot
+            plt.savefig(os.path.join(directory, f"force_magnitude_atom_{atom_index}.png"))
+            plt.close()
+
+def displacement_vector(molecule, old_coordinates):
+    # Define the directory
+    disp_dir = "checks/displacements"
+    os.makedirs(disp_dir, exist_ok=True)
+
+    # Identify non-dissociated atoms
+    shrunk_index = np.where(np.array(molecule.dissociation_flags) == 'NO')[0]
+
+    # Compute displacement for each atom
+    displacements = molecule.coordinates - old_coordinates
+    print(displacements)
+    displacement_magnitudes = np.sqrt(np.sum(displacements ** 2, axis=1))  # Per-atom magnitude
+
+    # Compute total displacement
+    total_displacement = np.sum(displacement_magnitudes)
+
+    # Save individual displacements
+    for i in shrunk_index:
+        with open(os.path.join(disp_dir, f"displacement_{i+1}.out"), "a") as out_file:
+            out_file.write(f"{displacement_magnitudes[i]:.10f}\n")    
+
+
+
+    # Save total displacement
+    with open(os.path.join(disp_dir, "total_displacement.out"), "a") as out_file:
+        out_file.write(f"{total_displacement:.10f}\n")
+
+
+     
+
+    # Plot displacement evolution
+    plot_displacements(disp_dir)
+
+def plot_displacements(directory="checks/displacements"):
+    # Ensure directory exists
+    os.makedirs(directory, exist_ok=True)
+
+    # Load fragmentation events if they exist
+    fragment_timesteps = []
+    fragment_file = os.path.join(directory, "../fragment-time.out")  # Assuming stored in "checks/"
+    if os.path.exists(fragment_file):
+        with open(fragment_file, 'r') as f:
+            fragment_timesteps = [int(float(x)) for x in f.read().split()]
+
+    # Plot individual atom displacements
+    for filename in os.listdir(directory):
+        if filename.startswith("displacement_") and filename.endswith(".out"):
+            atom_index = int(filename.split("_")[1].split(".")[0])
+            displacement_data = np.loadtxt(os.path.join(directory, filename))
+            displacement_data = np.atleast_1d(displacement_data) 
+            time_steps = np.arange(len(displacement_data))
+
+            plt.figure(figsize=(8, 6))
+            plt.plot(time_steps, displacement_data, label=f'Atom {atom_index}', color='b')
+            plt.xlabel('Time Step')
+            plt.ylabel('Displacement Magnitude')
+            plt.title(f'Displacement Evolution for Atom {atom_index}')
+            plt.legend()
+            plt.grid(True)
+
+            # Mark fragmentation events
+            if fragment_timesteps:
+                for t in fragment_timesteps:
+                    if 0 <= t < len(displacement_data):
+                        plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
+
+                # Ensure only one fragmentation event label appears
+                handles, labels = plt.gca().get_legend_handles_labels()
+                unique_labels = dict(zip(labels, handles))
+                plt.legend(unique_labels.values(), unique_labels.keys())
+
+            plt.savefig(os.path.join(directory, f"displacement_atom_{atom_index}.png"))
+            plt.close()
+
+    # Plot total displacement
+    total_disp_file = os.path.join(directory, "total_displacement.out")
+    if os.path.exists(total_disp_file):
+        total_displacements = np.loadtxt(total_disp_file)
+        total_displacements = np.atleast_1d(total_displacements) 
+        time_steps = np.arange(len(total_displacements))
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(time_steps, total_displacements, label="Total Displacement", color='g')
+        plt.xlabel("Time Step")
+        plt.ylabel("Total Displacement")
+        plt.title("Total Displacement Over Time")
+        plt.legend()
+        plt.grid(True)
+
+        # Mark fragmentation events
+        if fragment_timesteps:
+            for t in fragment_timesteps:
+                if 0 <= t < len(total_displacements):
+                    plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
+
+            handles, labels = plt.gca().get_legend_handles_labels()
+            unique_labels = dict(zip(labels, handles))
+            plt.legend(unique_labels.values(), unique_labels.keys())
+
+        plt.savefig(os.path.join(directory, "total_displacement.png"))
+        plt.close()

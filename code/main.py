@@ -135,13 +135,18 @@ def run_simulation(inputs, startstep, endstep, molecule1, molecule2, Checks, gue
     n = len(molecule1.symbols)
     for i in range(int(startstep), endstep + 1):
         time1 = time.time()
+        old_coordinates = molecule1.coordinates.copy()
+
         molecule2 = prop.prop_1(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
         molecule2 = elec.run_elec_structure(molecule2, inputs["setup"]["cores"], inputs["run"]["States"], inputs["run"]["Spin_flip"], inputs["run"]["method"], Guess=guess,basis=basis)
+
         molecule1.time[0] = molecule2.time[0]
         molecule1.time[2] = molecule2.time[2]
+
         molecule1.elecinfo = molecule2.elecinfo
 
         molecule1 = prop.prop_2(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
+
         molecule1, dissociated = prop.fragments(molecule1, inputs["run"]["Spin_flip"], inputs["run"]["Timestep"])
         molecule1 = prop.prop_diss(molecule1, inputs["run"]["Timestep"])
         time2= time.time()
@@ -150,7 +155,7 @@ def run_simulation(inputs, startstep, endstep, molecule1, molecule2, Checks, gue
         molecule1.time[4] = molecule1.timestep/inputs["run"]["Timestep"]
         out.output_molecule(molecule1)
         if Checks == 1:
-            out.run_checks(molecule1)
+            out.run_checks(molecule1,old_coordinates)
         molecule1.time[0] = 0
         guess = dissociated == 0  # Update guess based on dissociation
         

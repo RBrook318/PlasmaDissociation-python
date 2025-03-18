@@ -298,12 +298,16 @@ def run_qchem(ncpu, molecule, nstates, spin_flip, basis, Guess=True):
     - Upon successful completion, forces and energy data are extracted from the QChem 
       output, which is then passed to the `readqchem` function for detailed parsing.
     """
-    
+    if nstates == 1:
+     store_full_output = False
+    else:
+        store_full_output = True
+        
     for state in range(1,nstates+1):
         qc_inp=create_qchemforces_input(molecule, spin_flip,Guess=Guess,excited_state=state,number_of_states=nstates,basis = basis)
         try:
             qtime1 = time.time()
-            output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=True)
+            output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output = store_full_output)
             molecule.elecinfo=(ee['coefficients'])
             qtime2= time.time()
             print("time for qchem inside:",qtime2-qtime1)
@@ -322,7 +326,7 @@ def run_qchem(ncpu, molecule, nstates, spin_flip, basis, Guess=True):
                 molecule.time[0] += qtime2-qtime1
                 molecule.time[2] += qtime2-qtime1
                 qtime1 = time.time()
-                output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=True)
+                output, ee = get_output_from_qchem(qc_inp,processors=ncpu,return_electronic_structure=True,store_full_output=store_full_output)
                 molecule.elecinfo=(ee['coefficients'])
                 qtime2= time.time()
                 molecule.time[0] += qtime2-qtime1

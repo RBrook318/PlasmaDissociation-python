@@ -14,7 +14,6 @@ def create_geom(n,nmod,T,modes,m,mom_num):
     Az = Az.reshape(n, nmod, order = 'F')
     rn = np.random.randn(nmod, mom_num)  # Use np.random.randn for standard normal distribution
     T=T*0.0000031668
-    print(T)
     # Initialize arrays for random
     Meff = np.zeros(nmod)
     rv = np.zeros((nmod, mom_num))
@@ -40,7 +39,6 @@ def get_geometry_file():
 
     symbols = []
     coordinates = []
-    print(os.getcwd())
     with open("initial_guess.txt", "r") as file:
         for line in file:
             parts = line.split()
@@ -127,21 +125,6 @@ def momenta_checks(Px, Py, Pz, symbols, temperature, output_file="momentum_check
 
 
 
-    # Print results to console for verification
-    print(f"Expected Kinetic Energy: {expected_ke:.6f}")
-    print(f"Average Kinetic Energy: {average_kinetic_energy:.6f}")
-    for j in range(repeats):
-        print(f"Repeat {j+1}:")
-        print(f"  Kinetic Energy: {kinetic_energies[j]:.6f}")
-        if np.isclose(kinetic_energies[j], expected_ke, rtol=1e-2):
-            print("  Kinetic Energy check passed.")
-        else:
-            print("  Kinetic Energy check failed.")
-    print("\nAverage Momentum Magnitude per Atom:")
-    for i in range(natoms):
-        print(f"Atom {i+1} ({symbols[i]}): {avg_momentum_magnitude[i]:.6f}")
-
-    print(f"\nResults saved to {output_file}.")
 
 
 
@@ -167,34 +150,24 @@ def generate_bondarr(symbols, coordinates):
                 elem1, elem2 = symbols[i], symbols[j]
                 d = distances[i, j]  # Distance between atom i and j in Bohr
                 
-                # Print the distance for C-C and O-H bonds
-                if elem1 == 'C' and elem2 == 'C':
-                    print(f"C-C bond distance: {d:.4f} Bohr")
-                if elem1 == 'O' and elem2 == 'H':
-                    print(f"O-H bond distance: {d:.4f} Bohr")
-                
                 # Sort elements alphabetically to match dictionary keys
                 key = tuple(sorted((elem1, elem2)))
         
                 # Check if bond exists in dictionary
                 if key in BOND_THRESHOLDS:
-                    print(key)
+
                     # Loop through possible bond types for this pair
                     for max_dist, bond_type in BOND_THRESHOLDS[key]:
                         if d <= max_dist:
                             # Write bond type to file
                             file.write(f"{i+1}-{j+1}:{bond_type}\n")
                             
-                            # Print the distance for C-C and O-H bonds
-                            if bond_type == "C-C" or bond_type == "O-H":
-                                print(f"Bond: {elem1}-{elem2} | Distance: {d:.4f} Bohr | Type: {bond_type}")
     
     print("bondarr.txt successfully written!")
 
 
 def get_geometry_pubchem(molecule_name):
     search = pcp.get_compounds(molecule_name, 'name', record_type='3d')
-    print(search)
     molecule = search[0]
     bonds = molecule.bonds
     atoms = molecule.atoms
@@ -246,7 +219,6 @@ if __name__ == "__main__":
     if inputs["run"]["Geom_flg"] == "PubChem":
         symbols,coordinates = get_geometry_pubchem(inputs["run"]["Molecule"])
     elif inputs["run"]["Geom_flg"] == "Initial":
-        print("Running the new functions")
         symbols,coordinates = get_geometry_file()
         generate_bondarr(symbols, coordinates)
     if inputs["run"]["method"] == "QChem":
