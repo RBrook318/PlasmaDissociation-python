@@ -226,29 +226,36 @@ def check_total_energy(molecule):
     # Generate time steps based on the energy values read
     time_steps = np.arange(len(total_energy_values))
 
-    # Plot total energy evolution
+    # Plot change in total energy from the first entry
     plt.figure(figsize=(8, 6))
-    plt.plot(time_steps, total_energy_values, label="Total Energy", color='b')
-    plt.xlabel('Time Step')
-    plt.ylabel('Total Energy')
-    plt.title('Total Energy Evolution')
-    plt.legend()
-    plt.grid(True)
+    
+    if len(total_energy_values) > 1:
+        initial_energy = total_energy_values[0]
+        delta_energy_values = [value - initial_energy for value in total_energy_values]
+        plt.plot(time_steps, delta_energy_values, label="Change in Total Energy", color='b')
+        plt.xlabel('Time Step')
+        plt.ylabel('Change in Total Energy')
+        plt.title('Change in Total Energy Evolution')
+        plt.legend()
+        plt.grid(True)
 
-    # Mark fragmentation events
-    if fragment_timesteps:
-        for t in fragment_timesteps:
-            if 0 <= t < len(total_energy_values):  # Ensure the timestep is within range
-                plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
+        # Mark fragmentation events
+        if fragment_timesteps:
+            for t in fragment_timesteps:
+                if 0 <= t < len(delta_energy_values):  # Ensure the timestep is within range
+                    plt.axvline(x=t, color='r', linestyle='dashed', alpha=0.7, label="Fragmentation Event")
 
-        # Ensure the legend only contains one label for fragmentation events
-        handles, labels = plt.gca().get_legend_handles_labels()
-        unique_labels = dict(zip(labels, handles))
-        plt.legend(unique_labels.values(), unique_labels.keys())
-
-    # Save the plot
-    plt.savefig(os.path.join(energy_dir, "total_energy_evolution.png"))
-    plt.close()
+            # Ensure the legend only contains one label for fragmentation events
+            handles, labels = plt.gca().get_legend_handles_labels()
+            unique_labels = dict(zip(labels, handles))
+            plt.legend(unique_labels.values(), unique_labels.keys())
+        
+        # Save the plot
+        plt.savefig(os.path.join(energy_dir, "change_in_total_energy_evolution.png"))
+        plt.close()
+    
+    else:
+        print("Not enough data to plot change in total energy.")
     
 def forces_magnitudes(molecule):
     # Define the fixed directory path
