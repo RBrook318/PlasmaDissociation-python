@@ -130,7 +130,7 @@ class Molecule:
         self.masses = np.array(new_masses, dtype=np.float64)
     
     def update_coupling(self, new_coupling):
-        self.masses = np.array(new_coupling, dtype=np.float64)
+        self.coupling = np.array(new_coupling, dtype=np.float64)
     
 
     def print_info(self):
@@ -169,7 +169,7 @@ class Molecule:
             elecinfo=self.elecinfo,
             masses=self.masses.copy() if self.masses is not None else None,
             coupling=self.coupling.copy() if self.coupling is not None else None,
-            time = self.time if self.time is not None else None
+            time=self.time.copy() if self.time is not None else None
         )
         
         return new_molecule
@@ -187,7 +187,8 @@ class Molecule:
             'Multiplicity': self.multiplicity,
             'Dissociation Flags': self.dissociation_flags,
             'Masses': self.masses.tolist() if self.masses is not None else None,
-            'Time': self.time.tolist() if self.time is not None else None
+            'Time': self.time.tolist() if self.time is not None else None,
+            'Coupling': self.coupling.tolist() if self.coupling is not None else None,
         }
 
     def to_json(self, filename):
@@ -216,7 +217,8 @@ class Molecule:
             multiplicity=data['Multiplicity'],
             dissociation_flags=data['Dissociation Flags'],
             masses=data['Masses'] if 'Masses' in data and data['Masses'] is not None else None,
-            time = data['Time'] if 'Time' in data and data['Time'] is not None else None 
+            time = data['Time'] if 'Time' in data and data['Time'] is not None else None, 
+            coupling=data['Coupling'] if 'Coupling' in data and data['Coupling'] is not None else None
         )
 
     @classmethod
