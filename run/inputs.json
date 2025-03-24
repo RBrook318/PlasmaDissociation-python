@@ -1,16 +1,16 @@
 {
     "setup":{
-        "Runfolder":"Propenol-5000K-1state",
+        "Runfolder":"C4F6-nonadiabatic-state1",
         "repeats":500,
         "cores":8,
         "restart":"NO",
         "initre":0,
-        "hours": 10
+        "hours": 48
     },
     "run":{
         "Geom_flg": "PubChem",
-        "Molecule":"107-18-6",
-        "States":1,
+        "Molecule":"685-63-2",
+        "States":2,
         "Multiplicity":3,
         "Start_State": 1,
         "Basis":"6-31+G*",
@@ -20,7 +20,7 @@
         "Timestep":10,
         "Tot_timesteps":2100,
         "Geom_start":1,
-        "Spin_flip":0,
+        "Spin_flip":1,
         "method": "QChem",
         "GPU": 0,
         "Checks": 1

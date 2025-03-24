@@ -199,6 +199,7 @@ if __name__=="__main__":
                 f.write("#SBATCH --mem=1G\n")
                 f.write("#SBATCH --cpus-per-task=" + str(inputs["setup"]["cores"]) + "\n")
                 if inputs["run"]["method"] == "QChem":
+                    f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
                     f.write("mkdir $TMPDIR/qchemlocal\n")
                     f.write("tar -xzvf /users/" + getpass.getuser() + "/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
                     f.write('qchemlocal=$TMPDIR/qchemlocal\n')
@@ -214,20 +215,19 @@ if __name__=="__main__":
             setup_command = ['sbatch', '--parsable', file2]
             setup_job_id = subprocess.check_output(setup_command).strip().decode('utf-8')
             print(setup_job_id)
-            exit()
+
         file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#!/bin/bash\n")
-        f.write("#SBATCH --mem=1G")
+        f.write("#SBATCH --job-name=Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
+        f.write("#SBATCH --mem=1G\n")
         f.write("#SBATCH --time="+str(inputs["setup"]["hours"])+":00:00\n")
-        f.write("#SBATCH --job-name= Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
-        f.write("#SBATCH --cpus-per-task="+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-        f.write("#$SBATCH --ntasks="+str(inputs["setup"]["repeats"])+" \n")
+        f.write("#SBATCH --cpus-per-task="+str(inputs["setup"]["cores"])+" \n")
+        f.write("#SBATCH --array=1-"+str(inputs["setup"]["repeats"])+" \n")
         if(inputs["run"]["method"]=="QChem"):
-            f.write("module load test qchem \n")
-            f.write("module load qchem \n")
+            f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
-            f.write("tar -xzvf /mnt/scratch/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
+            f.write("tar -xzvf /users/" + getpass.getuser() + "/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
             f.write('qchemlocal=$TMPDIR/qchemlocal\n')
             f.write('export QCHEM_HOME="$qchemlocal"\n')
             f.write('export QC="$qchemlocal"\n')
@@ -235,10 +235,9 @@ if __name__=="__main__":
             f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.write("export QCSCRATCH="+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")
-        f.write("unset GOMP_CPU_AFFINITY KMP_AFFINITY \n")    
+            f.write("export QCSCRATCH="+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")  
         f.write("cd "+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")
-        f.write("python ./../code/main.py")
+        f.write("python /users/"+getpass.getuser()+"/PlasmaDissociation-python/code/main.py")
         f.close()
         plasma_command = ['sbatch', '--dependency=afterok:' + setup_job_id, file1]
         subprocess.call(plasma_command)
