@@ -19,6 +19,7 @@ Functions:
 import numpy as np
 import json
 np.set_printoptions(precision=30)
+import global_vars as gv
 
 class NumpyEncoder(json.JSONEncoder):
     """
@@ -229,7 +230,7 @@ class Molecule:
             return cls.from_dict(data)
 
 
-def create_empty_molecule(natoms, nst, spin_flip):
+def create_empty_molecule(natoms):
     """
     Creates a molecule instance with default attributes.
 
@@ -249,19 +250,19 @@ def create_empty_molecule(natoms, nst, spin_flip):
     """
     symbols = [''] * natoms
     coordinates = np.zeros((natoms, 3), dtype=np.float64)
-    scf_energy = np.zeros((nst), dtype=np.float64)
+    scf_energy = np.zeros((gv.num_states), dtype=np.float64)
     momenta = np.zeros((natoms, 3), dtype=np.float64)
-    forces = np.zeros((natoms, 3,nst), dtype=np.float64)
-    if spin_flip == 1:
+    forces = np.zeros((natoms, 3,gv.num_states), dtype=np.float64)
+    if gv.spin_flip == 1:
         multiplicity = 5
-    elif spin_flip == 0:
+    elif gv.spin_flip == 0:
         multiplicity = 3
-    amplitudes = np.zeros((nst), dtype=np.complex256)
+    amplitudes = np.zeros((gv.num_states), dtype=np.complex256)
     amplitudes[0] = 1 + 0j
     masses = np.zeros(natoms, dtype=np.float64)
     return Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, multiplicity=multiplicity, masses=masses)
 
-def initialize_structure(nst, spin_flip,mult,start_state):
+def initialize_structure():
     """
     Reads molecular structure data from a file and initializes a molecule instance.
 
@@ -307,16 +308,16 @@ def initialize_structure(nst, spin_flip,mult,start_state):
     momentum_data = np.array([list(map(float, line.split())) for line in momentum_lines], dtype=np.float64)
 
     # Read amplitudes if present
-    amplitudes = np.zeros((nst), dtype=np.complex128)
-    amplitudes[start_state-1] = 1 + 0j
+    amplitudes = np.zeros((gv.num_states), dtype=np.complex128)
+    amplitudes[gv.start_state-1] = 1 + 0j
 
-    if spin_flip == 1:
-        multiplicity = mult+2
-    elif spin_flip == 0:
-        multiplicity = mult
+    if gv.spin_flip == 1:
+        multiplicity = gv.multiplicity+2
+    elif gv.spin_flip == 0:
+        multiplicity = gv.multiplicity
 
-    forces = np.zeros((natoms, 3, nst), dtype=np.float64)
-    scf_energy = np.zeros((nst), dtype=np.float64)
+    forces = np.zeros((natoms, 3, gv.num_states), dtype=np.float64)
+    scf_energy = np.zeros((gv.num_states), dtype=np.float64)
     masses = np.zeros(natoms, dtype=np.float64)  # Initialize masses array
     masses = setup_masses(symbols)
     coupling = np.zeros((natoms,3))
@@ -326,7 +327,7 @@ def initialize_structure(nst, spin_flip,mult,start_state):
 
     return molecule
 
-def create_molecule(reps, natoms, nst, spin_flip):
+def create_molecule(natoms = None):
     """
     Wrapper function for molecule creation with optional structure reading.
 
@@ -359,12 +360,12 @@ def create_molecule(reps, natoms, nst, spin_flip):
     Molecule
         A Molecule instance created with either default or file-based attributes.
     """
-    if reps is None:
+    if natoms is not None:
         # If reps is None, create an empty molecule
-        return create_empty_molecule(natoms, nst, spin_flip)
+        return create_empty_molecule(natoms)
     else:
         # Otherwise, create an empty molecule
-        return initialize_structure(nst, spin_flip)
+        return initialize_structure()
 
 def setup_masses(symbols):
     """

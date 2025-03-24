@@ -63,6 +63,7 @@ import elec
 import prop
 import output as out
 import result
+import global_vars as gv
 
 # Constants for file paths
 INPUTS_FILE = '../inputs.json'
@@ -90,89 +91,83 @@ def check_restart(endstep, increment):
         return 'YES' if third_last_line < endstep else 'NO'
     return 'NO'
 
-def initialize_simulation(inputs, restart,basis):
+def initialize_simulation(restart):
     """Initialize the molecular structure and handle restart logic."""
-    nstates = inputs["run"]["States"]
-    start_state = inputs["run"]["Start_State"]
-    spin_flip = inputs["run"]["Spin_flip"]
-    mult = inputs["run"]["Multiplicity"]    
+   
     time1 =time.time()
     if restart == 'NO':
-        molecule1 = initialize_structure(nstates, spin_flip, mult,start_state)
-        n = len(molecule1.symbols)
-        molecule2 = create_empty_molecule(n, nstates, spin_flip)
-        molecule1 = elec.run_elec_structure(molecule1, inputs["setup"]["cores"], nstates, spin_flip, inputs["run"]["method"], Guess=False, basis = basis)
+        molecule1 = initialize_structure()
+        num_atoms = len(molecule1.symbols)
+        molecule2 = create_empty_molecule(num_atoms)
+        molecule1 = elec.run_elec_structure(molecule1, Guess=False)
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
-        molecule1.time[4] = molecule1.timestep/inputs["run"]["Timestep"]
+        molecule1.time[4] = molecule1.timestep/gv.timestep
         out.output_molecule(molecule1)
         molecule1.time[0] = 0
         return molecule1, molecule2, 1, True
     # Restart logic
     if os.path.exists(MOLECULE_JSON_FILE):
         molecule1 = Molecule.from_json(MOLECULE_JSON_FILE)
-        n = len(molecule1.symbols)
-        molecule2 = create_empty_molecule(n, nstates, spin_flip)
-        startstep = molecule1.timestep / inputs["run"]["Timestep"]
+        num_atoms = len(molecule1.symbols)
+        molecule2 = create_empty_molecule(num_atoms)
+        startstep = molecule1.timestep / gv.timestep
         return molecule1, molecule2, startstep, False
     
     # If JSON file doesn't exist, initialize a new structure
-    molecule1 = initialize_structure(nstates, spin_flip, mult)
+    molecule1 = initialize_structure()
     n = len(molecule1.symbols)
-    molecule2 = create_empty_molecule(n, nstates, spin_flip)
-    molecule1 = elec.run_elec_structure(molecule1, inputs["setup"]["cores"], nstates, spin_flip, inputs["run"]["method"], Guess=False, basis = basis)
+    molecule2 = create_empty_molecule(n)
+    molecule1 = elec.run_elec_structure(molecule1, Guess=False)
     time2= time.time()
     molecule1.time[1] = time2-time1
     molecule1.time[3] += time2-time1
-    molecule1.time[4] = molecule1.timestep/inputs["run"]["Timestep"]
+    molecule1.time[4] = molecule1.timestep/gv.timestep
     out.output_molecule(molecule1)
     molecule1.time[0] = 0
     return molecule1, molecule2, 1, True
 
-def run_simulation(inputs, startstep, endstep, molecule1, molecule2, Checks, guess, basis):
+def run_simulation(startstep, molecule1, molecule2, guess):
     """Run the main simulation loop for the specified number of timesteps."""
     n = len(molecule1.symbols)
-    for i in range(int(startstep), endstep + 1):
+    for i in range(int(startstep)-1, gv.tot_timesteps + 1):
         time1 = time.time()
         old_coordinates = molecule1.coordinates.copy()
 
-        molecule2 = prop.prop_1(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
-        molecule2 = elec.run_elec_structure(molecule2, inputs["setup"]["cores"], inputs["run"]["States"], inputs["run"]["Spin_flip"], inputs["run"]["method"], Guess=guess,basis=basis)
+        molecule2 = prop.prop_1(molecule1, molecule2)
+        molecule2 = elec.run_elec_structure(molecule2, Guess=guess)
 
         molecule1.time[0] = molecule2.time[0]
         molecule1.time[2] = molecule2.time[2]
 
         molecule1.elecinfo = molecule2.elecinfo
 
-        molecule1 = prop.prop_2(molecule1, molecule2, n, inputs["run"]["States"], inputs["run"]["Timestep"])
-
-        molecule1, dissociated = prop.fragments(molecule1, inputs["run"]["Spin_flip"], inputs["run"]["Timestep"])
-        molecule1 = prop.prop_diss(molecule1, inputs["run"]["Timestep"])
+        molecule1 = prop.prop_2(molecule1, molecule2)
+        if gv.remove_atoms == 1:
+            molecule1, dissociated = prop.fragments(molecule1)
+            molecule1 = prop.prop_diss(molecule1)
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
-        molecule1.time[4] = molecule1.timestep/inputs["run"]["Timestep"]
+        molecule1.time[4] = molecule1.timestep/gv.timestep
         out.output_molecule(molecule1)
-        if Checks == 1:
+        if gv.Checks == 1:
             out.run_checks(molecule1,old_coordinates)
         molecule1.time[0] = 0
         guess = dissociated == 0  # Update guess based on dissociation
         
 def main():
 
-    inputs = load_inputs()
 
+    gv.load_global_variables()
     # Check basic arguments
-    basis = inputs["run"]["Basis"]
-    endstep = inputs["run"]["Tot_timesteps"]
-    increment = inputs["run"]["Timestep"]
-    checks = inputs["run"]["Checks"]
-    restart = check_restart(endstep, increment)
 
-    molecule1, molecule2, startstep, guess = initialize_simulation(inputs, restart,basis)
+    restart = check_restart(gv.tot_timesteps, gv.timestep)
 
-    run_simulation(inputs, startstep, endstep, molecule1, molecule2, checks, guess, basis)
+    molecule1, molecule2, startstep, guess = initialize_simulation(restart)
+
+    run_simulation(startstep,molecule1, molecule2, guess)
 
     result.process_results()
 

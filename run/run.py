@@ -26,15 +26,15 @@ if __name__=="__main__":
         inputs=json.load(f)
 
     #Check basic arguements
-    if(isinstance(inputs["setup"]["repeats"],int)==False):
+    if(isinstance(inputs["HPC"]["repeats"],int)==False):
         sys.exit("Number of repeats must be an integer")
-    elif(isinstance(inputs["setup"]["cores"],int)==False):
+    elif(isinstance(inputs["HPC"]["cores"],int)==False):
         sys.exit("Number of parallel cores must be an integer")
-    elif(inputs["setup"]["repeats"]<1):
+    elif(inputs["HPC"]["repeats"]<1):
         sys.exit("Not enough runs selected. Must be 1 or greater")
-    elif(inputs["setup"]["cores"]>16):
+    elif(inputs["HPC"]["cores"]>16):
         sys.exit("Too many cores selected. Maximum of 8 available")
-    elif(inputs["setup"]["cores"]<1):
+    elif(inputs["HPC"]["cores"]<1):
         sys.exit("Not enough cores selected. Must be 1 or greater")
 
  
@@ -68,53 +68,54 @@ if __name__=="__main__":
         if not os.path.exists(EXDIR):
             os.mkdir(EXDIR)
     
-    if os.path.exists(EXDIR+"/"+inputs["setup"]["Runfolder"]):
+    if os.path.exists(EXDIR+"/"+inputs["HPC"]["Runfolder"]):
         value=input("File already exists do you want to delete it? y/n\n")
         if(value=='y'):
-            shutil.rmtree(EXDIR+"/"+inputs["setup"]["Runfolder"])
+            shutil.rmtree(EXDIR+"/"+inputs["HPC"]["Runfolder"])
         else:
             sys.exit("Runfolder already exists. Change the Runfolder name or delte/move it")
     
-    os.mkdir(EXDIR+"/"+inputs["setup"]["Runfolder"])
-    EXDIR1=EXDIR+"/"+inputs["setup"]["Runfolder"]  
+    os.mkdir(EXDIR+"/"+inputs["HPC"]["Runfolder"])
+    EXDIR1=EXDIR+"/"+inputs["HPC"]["Runfolder"]  
     os.mkdir(EXDIR1+"/results")
+    os.mkdir(EXDIR1+"/repetitions")
     os.mkdir(EXDIR1+"/results/bonds")
     with open(EXDIR1+"/results/bonds/allbonds.out", 'w'):
         pass
     os.mkdir(EXDIR1+"/results/specifics")
     os.mkdir(EXDIR1+"/results/graphs")
     os.mkdir(EXDIR1+"/setup")
-    if (inputs["run"]["Geom_flg"]) == "Initial":
-        shutil.copy2("../Initial_Geometry/"+inputs["run"]["Molecule"]+".txt",EXDIR1+"/setup/initial_guess.txt")
+    if (inputs["Molecule_data"]["Geom_flg"]) == "Initial":
+        shutil.copy2("../Initial_Geometry/"+inputs["Molecule_data"]["Molecule"]+".txt",EXDIR1+"/setup/initial_guess.txt")
     os.mkdir(EXDIR1+"/setup/tmp")
     shutil.copy2("restart.py",EXDIR1)
     shutil.copy2("inputs.json",EXDIR1)
 
-    for i in range(inputs["setup"]["repeats"]):
-        os.mkdir(EXDIR1+"/rep-"+str(i+1))
-        os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/output")
-        os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/tmp")
-        os.mkdir(EXDIR1+"/rep-"+str(i+1)+"/checks")
-        if(inputs["run"]["Geom_flg"] == "Full"):
-            shutil.copy2("../"+inputs["run"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["run"]["Geom_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
+    for i in range(inputs["HPC"]["repeats"]):
+        os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1))
+        os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1)+"/output")
+        os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1)+"/tmp")
+        os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1)+"/checks")
+        if(inputs["Molecule_data"]["Geom_flg"] == "Full"):
+            shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["Molecule_data"]["Geom_file_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
     
     if HPCFLG==1:
             shutil.copytree("../code", EXDIR1+'/code')
-    if(inputs["run"]["Geom_flg"] ==0):
-        shutil.copy2("../"+inputs["run"]["Molecule"]+"/bondarr.txt",EXDIR1+"/results")
+    if(inputs["Molecule_data"]["Geom_flg"] ==0):
+        shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/bondarr.txt",EXDIR1+"/results")
 
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
     if HPCFLG == "arc":
         # Makes Job Submission sctipt for initial setup
-        if inputs["run"]["Geom_flg"] in ["PubChem", "Initial"]:
-            file2="Setup_"+inputs["setup"]["Runfolder"]+".sh"
+        if inputs["Molecule_data"]["Geom_flg"] in ["PubChem", "Initial"]:
+            file2="Setup_"+inputs["HPC"]["Runfolder"]+".sh"
             f=open(file2,"w")
             f.write("#$ -cwd -V \n")
             f.write("#$ -l h_vmem=1G,h_rt=02:00:00 \n")
-            f.write("#$ -N Setup_"+inputs["setup"]["Runfolder"]+" \n")
-            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-            if(inputs["run"]["method"]=="QChem"):
+            f.write("#$ -N Setup_"+inputs["HPC"]["Runfolder"]+" \n")
+            f.write("#$ -pe smp "+str(inputs["HPC"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            if(inputs["Elec_structure"]["method"]=="QChem"):
                 f.write("module load  test qchem \n")
                 f.write("mkdir $TMPDIR/qchemlocal\n")
                 f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
@@ -129,20 +130,20 @@ if __name__=="__main__":
             f.write("cd "+EXDIR1+"/setup \n")
             f.write("python ./../code/setup.py")
             f.close()
-            command = ['qsub','-N','Setup_'+inputs["setup"]["Runfolder"], file2]
+            command = ['qsub','-N','Setup_'+inputs["HPC"]["Runfolder"], file2]
             subprocess.call(command)
         
         
-        file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
+        file1="Plasma_"+inputs["HPC"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#$ -cwd -V \n")
-        f.write("#$ -l h_vmem=8G,h_rt="+str(inputs["setup"]["hours"])+":00:00 \n")
-        f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
-        f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-        f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
-        if(inputs["run"]["GPU"]==1):
+        f.write("#$ -l h_vmem=8G,h_rt="+str(inputs["HPC"]["hours"])+":00:00 \n")
+        f.write("#$ -N Plasma_"+inputs["HPC"]["Runfolder"]+"_1 \n")
+        f.write("#$ -pe smp "+str(inputs["HPC"]["cores"])+" \n") #Use shared memory parallel environemnt 
+        f.write("#$ -t 1-"+str(inputs["HPC"]["repeats"])+" \n")
+        if(inputs["Elec_structure"]["GPU"]==1):
             f.write('#$ -l coproc_p100=1 \n')
-        if(inputs["run"]["method"]=="QChem"):
+        if(inputs["Elec_structure"]["method"]=="QChem"):
             f.write("module load test qchem \n")
             f.write("module load qchem \n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
@@ -156,23 +157,23 @@ if __name__=="__main__":
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
             f.write("export QCSCRATCH="+EXDIR1+"/rep-$SGE_TASK_ID \n")
         f.write("unset GOMP_CPU_AFFINITY KMP_AFFINITY \n")    
-        f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
+        f.write("cd "+EXDIR1+"/repetitions/rep-$SGE_TASK_ID \n")
         f.write("python ./../code/main.py")
         f.close()
-        command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["setup"]["Runfolder"], file1]
+        command = ['qsub','-N','Plasma_'+inputs["HPC"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["HPC"]["Runfolder"], file1]
         subprocess.call(command)
 
-        for i in range(inputs["setup"]["initre"]):
-            file1="Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+".sh"
+        for i in range(inputs["HPC"]["initre"]):
+            file1="Plasma_"+inputs["HPC"]["Runfolder"]+"_"+str(i+2)+".sh"
             f=open(file1,"w")
             f.write("#$ -cwd -V \n")
             f.write("#$ -l h_vmem=2G,h_rt=48:00:00 \n")
-            f.write("#$ -N Plasma_"+inputs["setup"]["Runfolder"]+"_"+str(i+2)+" \n")
-            f.write("#$ -pe smp "+str(inputs["setup"]["cores"])+" \n") #Use shared memory parallel environemnt 
-            f.write("#$ -t 1-"+str(inputs["setup"]["repeats"])+" \n")
+            f.write("#$ -N Plasma_"+inputs["HPC"]["Runfolder"]+"_"+str(i+2)+" \n")
+            f.write("#$ -pe smp "+str(inputs["HPC"]["cores"])+" \n") #Use shared memory parallel environemnt 
+            f.write("#$ -t 1-"+str(inputs["HPC"]["repeats"])+" \n")
             f.write("module load qchem \n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
-            if(inputs["run"]["method"]=="QChem"):
+            if(inputs["Elec_structure"]["method"]=="QChem"):
                 f.write("mkdir $TMPDIR/qchemlocal\n")
                 f.write("tar -xzvf /nobackup/"+getpass.getuser()+"/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
                 f.write('qchemlocal=$TMPDIR/qchemlocal\n')
@@ -183,22 +184,22 @@ if __name__=="__main__":
                 f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
                 f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
                 f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
-            f.write("cd "+EXDIR1+"/rep-$SGE_TASK_ID \n")
+            f.write("cd "+EXDIR1+"/repetitions/rep-$SGE_TASK_ID \n")
             f.write("./../main")
             f.close()
-            command = ['qsub','-N','Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+2), '-hold_jid', 'Plasma_'+inputs["setup"]["Runfolder"]+'_'+str(i+1), file1]
+            command = ['qsub','-N','Plasma_'+inputs["HPC"]["Runfolder"]+'_'+str(i+2), '-hold_jid', 'Plasma_'+inputs["HPC"]["Runfolder"]+'_'+str(i+1), file1]
             subprocess.call(command)
     elif HPCFLG == "aire":
     # AIRE job submission script
-        if inputs["run"]["Geom_flg"] in ["PubChem", "Initial"]:
-            file2 = "Setup_" + inputs["setup"]["Runfolder"] + ".sh"
+        if inputs["Molecule_data"]["Geom_flg"] in ["PubChem", "Initial"]:
+            file2 = "Setup_" + inputs["HPC"]["Runfolder"] + ".sh"
             with open(file2, "w") as f:
                 f.write("#!/bin/bash\n")
-                f.write("#SBATCH --job-name=Setup_" + inputs["setup"]["Runfolder"] + "\n")
+                f.write("#SBATCH --job-name=Setup_" + inputs["HPC"]["Runfolder"] + "\n")
                 f.write("#SBATCH --time=02:00:00\n")
                 f.write("#SBATCH --mem=1G\n")
-                f.write("#SBATCH --cpus-per-task=" + str(inputs["setup"]["cores"]) + "\n")
-                if inputs["run"]["method"] == "QChem":
+                f.write("#SBATCH --cpus-per-task=" + str(inputs["HPC"]["cores"]) + "\n")
+                if inputs["Molecule_data"]["method"] == "QChem":
                     f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
                     f.write("mkdir $TMPDIR/qchemlocal\n")
                     f.write("tar -xzvf /users/" + getpass.getuser() + "/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
@@ -216,15 +217,15 @@ if __name__=="__main__":
             setup_job_id = subprocess.check_output(setup_command).strip().decode('utf-8')
             print(setup_job_id)
 
-        file1="Plasma_"+inputs["setup"]["Runfolder"]+"_1.sh"
+        file1="Plasma_"+inputs["HPC"]["Runfolder"]+"_1.sh"
         f=open(file1,"w")
         f.write("#!/bin/bash\n")
-        f.write("#SBATCH --job-name=Plasma_"+inputs["setup"]["Runfolder"]+"_1 \n")
+        f.write("#SBATCH --job-name=Plasma_"+inputs["HPC"]["Runfolder"]+"_1 \n")
         f.write("#SBATCH --mem=1G\n")
-        f.write("#SBATCH --time="+str(inputs["setup"]["hours"])+":00:00\n")
-        f.write("#SBATCH --cpus-per-task="+str(inputs["setup"]["cores"])+" \n")
-        f.write("#SBATCH --array=1-"+str(inputs["setup"]["repeats"])+" \n")
-        if(inputs["run"]["method"]=="QChem"):
+        f.write("#SBATCH --time="+str(inputs["HPC"]["hours"])+":00:00\n")
+        f.write("#SBATCH --cpus-per-task="+str(inputs["HPC"]["cores"])+" \n")
+        f.write("#SBATCH --array=1-"+str(inputs["HPC"]["repeats"])+" \n")
+        if(inputs["Elec_structure"]["method"]=="QChem"):
             f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
             f.write("mkdir $TMPDIR/qchemlocal\n")
             f.write("tar -xzvf /users/" + getpass.getuser() + "/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
@@ -236,15 +237,15 @@ if __name__=="__main__":
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
             f.write("export QCSCRATCH="+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")  
-        f.write("cd "+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")
+        f.write("cd "+EXDIR1+"/repetitions/rep-$SLURM_ARRAY_TASK_ID \n")
         f.write("python /users/"+getpass.getuser()+"/PlasmaDissociation-python/code/main.py")
         f.close()
         plasma_command = ['sbatch', '--dependency=afterok:' + setup_job_id, file1]
         subprocess.call(plasma_command)
     else: 
-        for i in range(inputs["setup"]["repeats"]):
+        for i in range(inputs["HPC"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
-            if inputs["run"]["Geom_flg"] == 1:
+            if inputs["Molecule_data"]["Geom_flg"] == 1:
                 subprocess.call(["python", "../../../code/setup.py"])
             subprocess.call(["python", "../../../code/main.py"])
 

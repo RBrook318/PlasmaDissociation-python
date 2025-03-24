@@ -1,29 +1,36 @@
 {
-    "setup":{
+    "HPC":{
         "Runfolder":"C4F6-nonadiabatic-state1",
         "repeats":500,
         "cores":8,
-        "restart":"NO",
         "initre":0,
         "hours": 48
     },
-    "run":{
+
+    "Molecule_data":{
         "Geom_flg": "PubChem",
         "Molecule":"685-63-2",
         "States":2,
         "Multiplicity":3,
         "Start_State": 1,
-        "Basis":"6-31+G*",
         "Temp":5000,
         "Cutoff": 100,
+        "Geom_file_start":1
+    },
+
+    "Elec_structure":{
+        "method": "QChem",
+        "Spin_flip":1,
+        "Basis":"6-31+G*",
+        "GPU": 0
+    },
+
+    "Propagation":{
         "Branches":0,
         "Timestep":10,
         "Tot_timesteps":2100,
-        "Geom_start":1,
-        "Spin_flip":1,
-        "method": "QChem",
-        "GPU": 0,
-        "Checks": 1
+        "Checks": 1,
+        "Remove_atoms": 1
     }
 
 }

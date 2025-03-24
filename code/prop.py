@@ -21,12 +21,12 @@ Functions:
 
 import numpy as np
 from scipy.linalg import expm
-
+import global_vars as gv
 import output
 
 np.set_printoptions(precision=30)
 
-def CompForceEhr(A, F, E, C, nst):
+def CompForceEhr(A, F, E, C):
     """
     Computes the Ehrenfest force vector using state amplitudes, forces, and couplings.
 
@@ -52,16 +52,16 @@ def CompForceEhr(A, F, E, C, nst):
     f2 = np.zeros((natoms, 3), dtype=np.float64)
 
     # f1 calculation (weighted force sum)
-    if nst == 1:
+    if gv.num_states == 1:
         f1 += F[:, :, 0] * np.abs(A[0])**2
     else:
-        for i in range(nst):
+        for i in range(gv.num_states):
             f1 += F[:, :, i] * np.abs(A[i])**2
 
     # f2 calculation (non-adiabatic coupling term)
-    if nst > 1:
-        for i in range(nst):
-            for j in range(i+1, nst):
+    if gv.num_states > 1:
+        for i in range(gv.num_states):
+            for j in range(i+1, gv.num_states):
                 ae = 2.0 * np.real(np.conj(A[i]) * A[j]) * (E[i] - E[j])
                 f2 += ae * C[:,:,i,j]
 
@@ -170,16 +170,16 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     while the off-diagonal elements represent velocity-coupling terms.
     """
     # print("Calculating the hamiltonian")
-    nst = len(molecule.scf_energy)
+    gv.num_states = len(molecule.scf_energy)
     natoms = len(molecule.symbols)
-    # print("Number of states:", nst)
+    # print("Number of states:", gv.num_states)
     ii = 1j  # imaginary unit
 
-    electronic_hamiltonian = np.zeros((nst, nst), dtype=np.cdouble)
+    electronic_hamiltonian = np.zeros((gv.num_states, gv.num_states), dtype=np.cdouble)
 
-    for n1 in range(nst):
+    for n1 in range(gv.num_states):
         electronic_hamiltonian[n1, n1] = molecule.scf_energy[n1] + 77.67785291 
-        for n2 in range(n1 + 1, nst):
+        for n2 in range(n1 + 1, gv.num_states):
             electronic_hamiltonian[n1, n2] = -ii * np.sum(velocities * coupling[:,:,n1,n2])
             electronic_hamiltonian[n2, n1] = -electronic_hamiltonian[n1, n2]
 
@@ -281,9 +281,9 @@ def restore_molecule(molecule, shrunk_molecule, shrunk_index):
 
     return molecule
 
-def prop_1(molecule1, molecule2, natoms, nst, increment):
+def prop_1(molecule1, molecule2):
     """
-    Propagates molecular amplitudes, coordinates, and momenta over a time increment,
+    Propagates molecular amplitudes, coordinates, and momenta over a time gv.timestep,
     considering forces and velocities based on current state information.
 
     Parameters:
@@ -292,12 +292,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
         Input molecule object representing the initial molecular state.
     - molecule2 : object
         Second molecule object to receive updated properties after propagation.
-    - natoms : int
-        Number of atoms in the molecule.
-    - nst : int
-        Number of states in the electronic Hamiltonian.
-    - increment : float
-        Time step over which propagation occurs.
+
 
     Returns:
     -------
@@ -315,7 +310,7 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     - `calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)` : - prop.py
         Calculates the electronic Hamiltonian.
 
-    - `magnus2(ham_1, ham_2, increment)` : - prop.py
+    - `magnus2(ham_1, ham_2, gv.timestep)` : - prop.py
         Calculates time evolution of electronic amplitudes using the Magnus expansion.
 
     - `CompForceEhr(amplitudes, forces, scf_energy, Coupling, nst)` : -prop.py
@@ -324,12 +319,12 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     Notes:
     -----
     This function calculates molecular velocities, electronic Hamiltonian, and 
-    force vectors to update the amplitudes and forces over a set time increment. 
+    force vectors to update the amplitudes and forces over a set time gv.timestep. 
     Uses intermediate computations for accurate propagation, storing results in 
     temporary molecule `molecule2`.
     """
+    
     amplitudes = molecule1.amplitudes
-    velocities = np.zeros((natoms,3))
     forces_1 = molecule1.forces
     scf_energy_1 = molecule1.scf_energy
     molecule2 = molecule1.copy()
@@ -337,45 +332,46 @@ def prop_1(molecule1, molecule2, natoms, nst, increment):
     shrunk_molecule, shrunk_index = shrink_molecule(molecule1)
     
     natoms = len(shrunk_molecule.symbols)
+    velocities = np.zeros((natoms,3))
     
-    coupling = np.zeros((natoms,3,nst,nst))
+    coupling = np.zeros((natoms,3,gv.num_states,gv.num_states))
     for i in range(0, natoms):
         velocities[i,:] = shrunk_molecule.momenta[i,:]/shrunk_molecule.masses[i]
-        if nst > 1:
+        if gv.num_states > 1:
             for y in range(0,3):
                 coupling[i,y,0,1] = shrunk_molecule.coupling[i,y]  
                 coupling[i,y,1,0] = -shrunk_molecule.coupling[i,y]  
             
     
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, coupling)
-    # print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20).shape)
-    print(Eham_1)
-    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment/20), amplitudes)
+    # print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep / 20).shape)
+
+    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/20), amplitudes)
     # print('Amplitudes:', Amplitudes_temp)
-    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling,nst)/10
+    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling,gv.num_states)/10
     
     for im in range(1, 10):
         
-        A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment/10), Amplitudes_temp)
+        A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/10), Amplitudes_temp)
         # print('Amplitudes:', A1)
         Amplitudes_temp = A1
-        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling,nst)/10
+        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling,gv.num_states)/10
     
     print("Final amplitudes of prop 1: \n")
     print(A1)
     print("------------------\n")
 
     shrunk_molecule.update_amplitudes(A1)
-    shrunk_molecule.update_timestep(shrunk_molecule.timestep+increment)
+    shrunk_molecule.update_timestep(shrunk_molecule.timestep+gv.timestep)
   
     for i in range(natoms):
-        shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + increment*velocities[i,:] + ((increment**2)/2)*Force_vector[i,:]/shrunk_molecule.masses[i]
-        shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + increment*Force_vector[i,:]
+        shrunk_molecule.coordinates[i,:] = shrunk_molecule.coordinates[i,:] + gv.timestep*velocities[i,:] + ((gv.timestep**2)/2)*Force_vector[i,:]/shrunk_molecule.masses[i]
+        shrunk_molecule.momenta[i,:] = shrunk_molecule.momenta[i,:] + gv.timestep*Force_vector[i,:]
     restore_molecule(molecule2, shrunk_molecule, shrunk_index)
 
     return molecule2
 
-def prop_2(molecule1, molecule2, natoms, nst, increment):
+def prop_2(molecule1, molecule2):
     """
     Interpolates properties between two molecular states and propagates 
     amplitudes, energy, and forces based on electronic Hamiltonians and couplings.
@@ -388,9 +384,9 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
         Secondary molecule object used for interpolation.
     - natoms : int
         Number of atoms in the molecule.
-    - nst : int
+    - gv.num_states : int
         Number of states in the electronic Hamiltonian.
-    - increment : float
+    - gv.timestep : float
         Time step over which propagation occurs.
 
     Returns:
@@ -409,10 +405,10 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     - `calculate_electronic_hamiltonian(shrunk_molecule, velocities, Coupling)` : -prop.py
         Calculates the electronic Hamiltonian.
 
-    - `magnus2(ham_1, ham_2, increment)` : - prop.py
+    - `magnus2(ham_1, ham_2, gv.timestep)` : - prop.py
         Calculates time evolution of electronic amplitudes using the Magnus expansion.
 
-    - `CompForceEhr(amplitudes, forces, scf_energy, Coupling, nst)` : - prop.py
+    - `CompForceEhr(amplitudes, forces, scf_energy, Coupling, gv.num_states)` : - prop.py
         Computes the Ehrenfest forces for the system.
 
     Notes:
@@ -433,20 +429,20 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
     natoms = len(shrunk_molecule1.symbols)
     velocities_1 = np.zeros((natoms,3))
     velocities_2 = np.zeros((natoms,3))
-    coupling_1 = np.zeros((natoms,3,nst,nst))
-    coupling_2 = np.zeros((natoms,3,nst,nst))
+    coupling_1 = np.zeros((natoms,3,gv.num_states,gv.num_states))
+    coupling_2 = np.zeros((natoms,3,gv.num_states,gv.num_states))
     for i in range(0, natoms):
         velocities_1[i,:] = shrunk_molecule1.momenta[i,:]/shrunk_molecule1.masses[i]
         velocities_2[i,:] = shrunk_molecule2.momenta[i,:]/shrunk_molecule2.masses[i]
-        if nst >1: 
+        if gv.num_states >1: 
             for y in range(0,3):
                 coupling_1[i,y,0,1] = shrunk_molecule1.coupling[i,y]  
                 coupling_1[i,y,1,0] = -shrunk_molecule1.coupling[i,y]  
                 coupling_2[i,y,0,1] = shrunk_molecule2.coupling[i,y]  
                 coupling_2[i,y,1,0] = -shrunk_molecule2.coupling[i,y]  
 
-    ElPhase = np.ones(nst)  # Initialize ElPhase[1] = 1 (Fortran index 1 → Python index 0)
-    for j in range(1, nst):  
+    ElPhase = np.ones(gv.num_states)  # Initialize ElPhase[1] = 1 (Fortran index 1 → Python index 0)
+    for j in range(1, gv.num_states):  
         num = np.sum(coupling_1[:, :, 0, j] * coupling_2[:, :, 0, j])  # Selecting (natoms,) elements
         den = np.sqrt(np.sum(coupling_1[:, :, 0, j]**2) * np.sum(coupling_2[:, :, 0, j]**2))
     
@@ -456,7 +452,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
         # Warning condition
         if abs(val) < 0.5 and abs(shrunk_molecule2.amplitudes[j]) >= 0.35:
             print(f"!! Warning: the sign for state {j} is not reliable! {val:.4f}")
-    for i in range(1, nst):
+    for i in range(1, gv.num_states):
         coupling_2[:,:,i,:] *= ElPhase[i]  # Apply phase to the second dimension
         coupling_2[:,:,:,i] *= ElPhase[i]  # Apply phase to the third dimension
         molecule2.coupling = molecule2.coupling * ElPhase[i]
@@ -470,33 +466,30 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
 
 
     
-    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, increment / 20), shrunk_molecule1.amplitudes)
+    Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep / 20), shrunk_molecule1.amplitudes)
     Energy_temp = 0.05 * shrunk_molecule2.scf_energy + 0.95 * shrunk_molecule1.scf_energy
     Forces_temp = 0.05 * shrunk_molecule2.forces + 0.95 * shrunk_molecule1.forces
     Coupling_temp = 0.05 * coupling_2 + 0.95 * coupling_1
 
-    Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp, nst)/10.
+    Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp, gv.num_states)/10.
     for im in range(1, 10):
         Eham_temp = (im * Eham_2 + (10 - im) * Eham_1) * 0.1
         Energy_temp = ((0.1 * im) + 0.05) * shrunk_molecule2.scf_energy + (0.95 - im * 0.1) * shrunk_molecule1.scf_energy
         Forces_temp = ((0.1 * im) + 0.05) * shrunk_molecule2.forces + (0.95 - im * 0.1) * shrunk_molecule1.forces
         Coupling_temp = ((0.1 * im) + 0.05) * coupling_2 + (0.95 - im * 0.1) * coupling_1
-        A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, increment/10), Amplitudes_temp)
+        A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, gv.timestep/10), Amplitudes_temp)
         Amplitudes_temp = A1
         # print("Calculated amplitudes: \n")
         # print(A1)
         # print("------------------\n")
-        Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, nst)
+        Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, gv.num_states)
         Force_vector += Force_vector_temp / 10
 
 
-    A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, increment / 20), A1)
-    print("Final amplitudes: \n")
-    print(A1)
-    print("------------------\n")
+    A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, gv.timestep / 20), A1)
     # print(shrunk_molecule1.momenta)
     # print('Force_vector: ',Force_vector)
-    shrunk_molecule1.momenta = shrunk_molecule1.momenta + increment * Force_vector 
+    shrunk_molecule1.momenta = shrunk_molecule1.momenta + gv.timestep * Force_vector 
     # print(shrunk_molecule1.momenta)
     
     shrunk_molecule1.update_symbols(shrunk_molecule2.symbols)
@@ -511,7 +504,7 @@ def prop_2(molecule1, molecule2, natoms, nst, increment):
 
     return molecule1
 
-def fragments(molecule, spin_flip,increment):
+def fragments(molecule):
     """
     Analyzes and marks atoms in a molecule that meet dissociation criteria and
     updates multiplicity based on the presence of a spin flip.
@@ -551,9 +544,9 @@ def fragments(molecule, spin_flip,increment):
         val = np.sqrt(np.sum(molecule.forces[j-1, :, :]**2))
         if val < 1.0e-5:
             molecule.multiplicity -= 1
-            if spin_flip == 1 and molecule.multiplicity == 2:
+            if gv.spin_flip == 1 and molecule.multiplicity == 2:
                 molecule.multiplicity = 4
-            elif spin_flip == 0 and molecule.multiplicity == 0:
+            elif gv.spin_flip == 0 and molecule.multiplicity == 0:
                 molecule.multiplicity = 2
 
             molecule.dissociation_flags[i] = 'YES'
@@ -564,20 +557,20 @@ def fragments(molecule, spin_flip,increment):
     if to_remove:
         molecule.forces = np.delete(molecule.forces, to_remove, axis=0)
         molecule.coupling = np.delete(molecule.coupling, to_remove,axis=0)
-        output.output_fragment_time(molecule.timestep/increment)
+        output.output_fragment_time(molecule.timestep/gv.timestep)
 
     return molecule, dissociated
 
-def prop_diss(molecule, increment): 
+def prop_diss(molecule): 
     """
     Propagates coordinates of dissociated atoms based on their velocities, updating their
-    positions over the specified time increment.
+    positions over the specified time gv.timestep.
 
     Parameters:
     ----------
     - molecule : object
         The molecular object, containing current atom positions, velocities, and masses.
-    - increment : float
+    - gv.timestep : float
         Time step used to propagate dissociated atoms’ coordinates.
 
     Returns:
@@ -589,7 +582,7 @@ def prop_diss(molecule, increment):
     Notes:
     -----
     This function calculates the velocity of atoms marked as dissociated and uses these
-    to propagate their positions over the time increment. Positions are updated only for
+    to propagate their positions over the time gv.timestep. Positions are updated only for
     atoms with dissociation flags set to 'YES'.
     """
     natoms = len(molecule.symbols)
@@ -608,7 +601,7 @@ def prop_diss(molecule, increment):
 
     for i in dis_index:
         velocities[:] = molecule.momenta[i, :] / molecule.masses[i]
-        molecule.coordinates[i, :] = molecule.coordinates[i, :] + increment * velocities[:]
+        molecule.coordinates[i, :] = molecule.coordinates[i, :] + gv.timestep * velocities[:]
 
     return molecule
 
