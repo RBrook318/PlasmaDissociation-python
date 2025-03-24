@@ -216,15 +216,15 @@ def organise_modes(modes,atoms):
 if __name__ == "__main__":
     with open('../inputs.json') as f:
         inputs=json.load(f)
-    if inputs["run"]["Geom_flg"] == "PubChem":
-        symbols,coordinates = get_geometry_pubchem(inputs["run"]["Molecule"])
-    elif inputs["run"]["Geom_flg"] == "Initial":
+    if inputs["Molecule_data"]["Geom_flg"] == "PubChem":
+        symbols,coordinates = get_geometry_pubchem(inputs["Molecule_data"]["Molecule"])
+    elif inputs["Molecule_data"]["Geom_flg"] == "Initial":
         symbols,coordinates = get_geometry_file()
         generate_bondarr(symbols, coordinates)
-    if inputs["run"]["method"] == "QChem":
+    if inputs["Elec_structure"]["method"] == "QChem":
         import qchem as qc
-        opt_coords, modes = qc.initial_conditions(symbols,coordinates,inputs['setup']['cores'])
-    elif inputs["run"]["method"] == "PySCF":
+        opt_coords, modes = qc.initial_conditions(symbols,coordinates,inputs['HPC']['cores'])
+    elif inputs["Elec_structure"]["method"] == "PySCF":
         import elec_pyscf as pyscf
         pyscf.initial_conditions(symbols,coordinates)
     
@@ -234,10 +234,10 @@ if __name__ == "__main__":
     natoms = int((num_modes+6)/3)
     modes=organise_modes(modes,natoms)
     masses = init.setup_masses(symbols)
-    Px, Py, Pz = create_geom(natoms,num_modes,inputs["run"]["Temp"],modes,masses,inputs["setup"]["repeats"])
-    momenta_checks(Px,Py,Pz,symbols,inputs["run"]["Temp"])
-    for j in range(inputs["setup"]["repeats"]):
-        with open('../rep-'+str(j+1)+'/Geometry', 'w') as file:
+    Px, Py, Pz = create_geom(natoms,num_modes,inputs["Molecule_data"]["Temp"],modes,masses,inputs["HPC"]["repeats"])
+    momenta_checks(Px,Py,Pz,symbols,inputs["Molecule_data"]["Temp"])
+    for j in range(inputs["HPC"]["repeats"]):
+        with open('../repetitions/rep-'+str(j+1)+'/Geometry', 'w') as file:
             file.write(opt_coords)
             file.write("momentum\n")
             # Write Px, Py, and Pz for each atom on the same line

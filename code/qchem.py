@@ -114,7 +114,7 @@ def create_qchem_nac_input(molecule, scf_algorithm="DIIS", Guess=True):
         sym_ignore=True,
         scf_algorithm=scf_algorithm,
         cis_n_roots=gv.num_states,
-        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500,'calc_nac':'true','CIS_DER_NUMSTATE': total_states},
+        extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500,'calc_nac':'true','CIS_DER_NUMSTATE': gv.num_states},
         )
 
     
@@ -338,7 +338,7 @@ def run_qchem(molecule, Guess=True):
         molecule.time[2] += qtime2 - qtime1
 
         try:
-            readqchemnac('ec.out', molecule, gv.num_states)
+            readqchemnac('ec.out', molecule)
         except ValueError:
             # If NAC section not found, retry with DIIS_GDM
             print("Derivative coupling not found, retrying with DIIS_GDM...")

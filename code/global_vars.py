@@ -22,7 +22,7 @@ def load_global_variables():
     global branches, timestep, tot_timesteps, checks, remove_atoms
 
     # Open and read the JSON file
-    with open("../inputs.json", "r") as f:
+    with open("../../inputs.json", "r") as f:
         inputs = json.load(f)
     
     # Set global variables from JSON file

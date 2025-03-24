@@ -147,16 +147,16 @@ def run_simulation(startstep, molecule1, molecule2, guess):
         if gv.remove_atoms == 1:
             molecule1, dissociated = prop.fragments(molecule1)
             molecule1 = prop.prop_diss(molecule1)
+            guess = dissociated == 0  # Update guess based on dissociation
+
+        out.output_molecule(molecule1)
+        if gv.checks == 1:
+            out.run_checks(molecule1,old_coordinates)
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
         molecule1.time[4] = molecule1.timestep/gv.timestep
-        out.output_molecule(molecule1)
-        if gv.Checks == 1:
-            out.run_checks(molecule1,old_coordinates)
         molecule1.time[0] = 0
-        guess = dissociated == 0  # Update guess based on dissociation
-        
 def main():
 
 

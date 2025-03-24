@@ -1,10 +1,10 @@
 {
     "HPC":{
-        "Runfolder":"C4F6-nonadiabatic-state1",
-        "repeats":500,
+        "Runfolder":"Global_test",
+        "repeats":1,
         "cores":8,
         "initre":0,
-        "hours": 48
+        "hours": 3
     },
 
     "Molecule_data":{
@@ -20,7 +20,7 @@
 
     "Elec_structure":{
         "method": "QChem",
-        "Spin_flip":1,
+        "Spin_flip":0,
         "Basis":"6-31+G*",
         "GPU": 0
     },
@@ -30,7 +30,7 @@
         "Timestep":10,
         "Tot_timesteps":2100,
         "Checks": 1,
-        "Remove_atoms": 1
+        "Remove_atoms": 0
     }
 
 }

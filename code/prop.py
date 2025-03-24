@@ -348,14 +348,14 @@ def prop_1(molecule1, molecule2):
 
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/20), amplitudes)
     # print('Amplitudes:', Amplitudes_temp)
-    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling,gv.num_states)/10
-    
+    Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling)/10
+
     for im in range(1, 10):
         
         A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/10), Amplitudes_temp)
         # print('Amplitudes:', A1)
         Amplitudes_temp = A1
-        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling,gv.num_states)/10
+        Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling)/10
     
     print("Final amplitudes of prop 1: \n")
     print(A1)
@@ -471,7 +471,7 @@ def prop_2(molecule1, molecule2):
     Forces_temp = 0.05 * shrunk_molecule2.forces + 0.95 * shrunk_molecule1.forces
     Coupling_temp = 0.05 * coupling_2 + 0.95 * coupling_1
 
-    Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp, gv.num_states)/10.
+    Force_vector = CompForceEhr(Amplitudes_temp, Forces_temp, Energy_temp, Coupling_temp)/10.
     for im in range(1, 10):
         Eham_temp = (im * Eham_2 + (10 - im) * Eham_1) * 0.1
         Energy_temp = ((0.1 * im) + 0.05) * shrunk_molecule2.scf_energy + (0.95 - im * 0.1) * shrunk_molecule1.scf_energy
@@ -482,7 +482,7 @@ def prop_2(molecule1, molecule2):
         # print("Calculated amplitudes: \n")
         # print(A1)
         # print("------------------\n")
-        Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp, gv.num_states)
+        Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp)
         Force_vector += Force_vector_temp / 10
 
 
