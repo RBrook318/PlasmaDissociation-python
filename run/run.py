@@ -61,6 +61,7 @@ if __name__=="__main__":
             os.mkdir("../EXEC")  
     elif(HPCFLG=="arc"):
         EXDIR="/nobackup/"+getpass.getuser()
+        HOME_DIR = os.getcwd()
         if not os.path.exists(EXDIR):
             os.mkdir(EXDIR)
     elif(HPCFLG=="aire"):
@@ -103,7 +104,7 @@ if __name__=="__main__":
             shutil.copytree("../code", EXDIR1+'/code')
     if(inputs["Molecule_data"]["Geom_flg"] ==0):
         shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/bondarr.txt",EXDIR1+"/results")
-
+    
     os.chdir(EXDIR1)
     EXDIR1=os.getcwd()
     if HPCFLG == "arc":
@@ -128,7 +129,7 @@ if __name__=="__main__":
                 f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
                 f.write("export QCSCRATCH="+EXDIR1+"/setup/tmp \n")
             f.write("cd "+EXDIR1+"/setup \n")
-            f.write("python ./../code/setup.py")
+            f.write("python "+HOME_DIR+"/../code/setup.py")
             f.close()
             command = ['qsub','-N','Setup_'+inputs["HPC"]["Runfolder"], file2]
             subprocess.call(command)
@@ -155,10 +156,10 @@ if __name__=="__main__":
             f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.write("export QCSCRATCH="+EXDIR1+"/rep-$SGE_TASK_ID \n")
+            f.write("export QCSCRATCH="+EXDIR1+"/repetitions/rep-$SGE_TASK_ID \n")
         f.write("unset GOMP_CPU_AFFINITY KMP_AFFINITY \n")    
         f.write("cd "+EXDIR1+"/repetitions/rep-$SGE_TASK_ID \n")
-        f.write("python ./../code/main.py")
+        f.write("python "+HOME_DIR+"/../code/main.py")
         f.close()
         command = ['qsub','-N','Plasma_'+inputs["HPC"]["Runfolder"]+'_1', '-hold_jid', 'Setup_'+inputs["HPC"]["Runfolder"], file1]
         subprocess.call(command)
