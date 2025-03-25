@@ -16,6 +16,8 @@ The following functions are available in this module:
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+import global_vars as gv
 
 def output_molecule(molecule): 
     """
@@ -55,14 +57,26 @@ def run_checks(molecule, old_coordinates):
     ----------
     molecule : Molecule
         The Molecule instance whose coordinates are to be written.
-    
-    
+    old_coordinates : array-like
+        The previous coordinates of the molecule.
     """
+
+    
+    # Timing forces_magnitudes
+
     forces_magnitudes(molecule)
+
+   
+    
+    # Timing check_total_energy
+
     check_total_energy(molecule)
+
+    
+    # Timing displacement_vector
     displacement_vector(molecule, old_coordinates)
-
-
+    
+    end_time = time.time()
 
 def output_xyz(molecule):
     """
@@ -278,7 +292,8 @@ def forces_magnitudes(molecule):
             out_file.write(f"{force_magnitude}\n")
 
     # Plot force magnitudes after writing files
-    plot_force_magnitudes(forces_dir)
+    if gv.checks > 1:
+        plot_force_magnitudes(forces_dir)
 
 def plot_force_magnitudes(directory="checks/forces"):
 
@@ -340,7 +355,7 @@ def displacement_vector(molecule, old_coordinates):
 
     # Compute displacement for each atom
     displacements = molecule.coordinates - old_coordinates
-    print(displacements)
+
     displacement_magnitudes = np.sqrt(np.sum(displacements ** 2, axis=1))  # Per-atom magnitude
 
     # Compute total displacement
@@ -361,7 +376,8 @@ def displacement_vector(molecule, old_coordinates):
      
 
     # Plot displacement evolution
-    plot_displacements(disp_dir)
+    if gv.checks > 1:
+        plot_displacements(disp_dir)
 
 def plot_displacements(directory="checks/displacements"):
     # Ensure directory exists

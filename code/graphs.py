@@ -58,7 +58,7 @@ def generate_graphs_from_json(json_file):
 
     Notes:
     ------
-    - The function reads from '../results/completed_trajectories.txt' to obtain the total 
+    - The function reads from '../../results/completed_trajectories.txt' to obtain the total 
       number of trajectories.
     - It expects the JSON structure to contain specific fields for each graph.
     - The generated plots are saved in the specified output paths defined in the JSON file.
@@ -68,7 +68,7 @@ def generate_graphs_from_json(json_file):
         graphs = json.load(file)
     
     # Read the total number of bonds from allbonds.out
-    with open('../results/completed_trajectories.txt', 'r') as all_file:
+    with open('../../results/completed_trajectories.txt', 'r') as all_file:
         total_trajectories = int(all_file.read().strip()) 
 
     # Iterate through each graph configuration in the JSON
@@ -77,7 +77,7 @@ def generate_graphs_from_json(json_file):
 
         # Iterate through each file info in the current graph data
         for file_info in graph_data['files']:
-            # Adjust the path to look for the files in ../results/bonds/
+            # Adjust the path to look for the files in ../../results/bonds/
             bond_file_path = file_info['filename']
             plot_data(bond_file_path, file_info['label'], file_info['no_bonds'],
                       file_info['color'], total_trajectories)
@@ -88,7 +88,7 @@ def generate_graphs_from_json(json_file):
         plt.title(f"Bonds broken for {graph_name}")
         plt.legend()
 
-        # Save the plot to ../results/graphs/
+        # Save the plot to ../../results/graphs/
         output_path = graph_data['output_file']
         plt.savefig(output_path)
         plt.close()
@@ -103,8 +103,8 @@ def create_graphs():
 
     Notes:
     ------
-    - The JSON file is expected to be located at '../results/graphs_config.json'.
+    - The JSON file is expected to be located at '../../results/graphs_config.json'.
     - This function does not return any values but generates and saves plots.
     """
-    json_file = '../results/graphs_config.json'  # Path to your JSON file
+    json_file = '../../results/graphs_config.json'  # Path to your JSON file
     generate_graphs_from_json(json_file)

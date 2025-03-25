@@ -85,28 +85,20 @@ def magnus2(H0, H1, dt):
     """
     ndim = H0.shape[0]
 
-    # Calculate the average
-    # print("electronic hamilonians \n")
-    # print(H0,"\n")
-    # print(H1,"\n")
-    # print("Average: \n")
+
 
     Hav = np.sum(np.diag(H0) + np.diag(H1)) / (2 * ndim)
-    # print(Hav, "\n")
-    # print(Hav)
-    # The trace matrix
+
     Htr = np.diag(np.full(ndim, Hav))
-    # print("Trace matrix \n")
-    # print(Htr)
+
     
     a0 = (H1 + H0) / 2.0 - Htr
     W1 = dt * a0
     
     # Assuming exp_pade is a function that performs the matrix exponential using Pade approximation
     magH = exp_matrix(W1) * np.exp(Hav * dt)
-    # print("MagH with timestep",dt,":")
-    # print(magH)
-    # print("----------")
+
+
     return magH
 
 def exp_matrix(A, t_in=None):
@@ -169,10 +161,10 @@ def calculate_electronic_hamiltonian(molecule, velocities, coupling):
     The diagonal elements are the SCF energies shifted by a constant (77.67785291), 
     while the off-diagonal elements represent velocity-coupling terms.
     """
-    # print("Calculating the hamiltonian")
+
     gv.num_states = len(molecule.scf_energy)
     natoms = len(molecule.symbols)
-    # print("Number of states:", gv.num_states)
+
     ii = 1j  # imaginary unit
 
     electronic_hamiltonian = np.zeros((gv.num_states, gv.num_states), dtype=np.cdouble)
@@ -344,22 +336,19 @@ def prop_1(molecule1, molecule2):
             
     
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule, velocities, coupling)
-    # print("magnus2 output shape:", magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep / 20).shape)
+
 
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/20), amplitudes)
-    # print('Amplitudes:', Amplitudes_temp)
+
     Force_vector=CompForceEhr(amplitudes,forces_1,scf_energy_1,coupling)/10
 
     for im in range(1, 10):
         
         A1 = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep/10), Amplitudes_temp)
-        # print('Amplitudes:', A1)
+
         Amplitudes_temp = A1
         Force_vector +=  CompForceEhr(Amplitudes_temp, forces_1, scf_energy_1, coupling)/10
     
-    print("Final amplitudes of prop 1: \n")
-    print(A1)
-    print("------------------\n")
 
     shrunk_molecule.update_amplitudes(A1)
     shrunk_molecule.update_timestep(shrunk_molecule.timestep+gv.timestep)
@@ -448,8 +437,6 @@ def prop_2(molecule1, molecule2):
     
         val = num / den if den != 0 else 0.0  # Avoid division by zero
         ElPhase[j] = np.sign(val)  # Equivalent to sign(1., val)
-        # print("Phase:", ElPhase[j])
-        # Warning condition
         if abs(val) < 0.5 and abs(shrunk_molecule2.amplitudes[j]) >= 0.35:
             print(f"!! Warning: the sign for state {j} is not reliable! {val:.4f}")
     for i in range(1, gv.num_states):
@@ -458,13 +445,8 @@ def prop_2(molecule1, molecule2):
         molecule2.coupling = molecule2.coupling * ElPhase[i]
 
     Eham_1 = calculate_electronic_hamiltonian(shrunk_molecule1,velocities_1,coupling_1)
-    # print("Coupling difference:", coupling_1 - coupling_2)
+
     Eham_2 = calculate_electronic_hamiltonian(shrunk_molecule2,velocities_2,coupling_2)
-    # print(Eham_1)
-    # print(Eham_2)
-
-
-
     
     Amplitudes_temp = np.matmul(magnus2(-1j * Eham_1, -1j * Eham_1, gv.timestep / 20), shrunk_molecule1.amplitudes)
     Energy_temp = 0.05 * shrunk_molecule2.scf_energy + 0.95 * shrunk_molecule1.scf_energy
@@ -479,18 +461,13 @@ def prop_2(molecule1, molecule2):
         Coupling_temp = ((0.1 * im) + 0.05) * coupling_2 + (0.95 - im * 0.1) * coupling_1
         A1 = np.matmul(magnus2(-1j * Eham_temp, -1j * Eham_temp, gv.timestep/10), Amplitudes_temp)
         Amplitudes_temp = A1
-        # print("Calculated amplitudes: \n")
-        # print(A1)
-        # print("------------------\n")
         Force_vector_temp = CompForceEhr(A1, Forces_temp, Energy_temp, Coupling_temp)
         Force_vector += Force_vector_temp / 10
 
 
     A1 = np.matmul(magnus2(-1j * Eham_2, -1j * Eham_2, gv.timestep / 20), A1)
-    # print(shrunk_molecule1.momenta)
-    # print('Force_vector: ',Force_vector)
+
     shrunk_molecule1.momenta = shrunk_molecule1.momenta + gv.timestep * Force_vector 
-    # print(shrunk_molecule1.momenta)
     
     shrunk_molecule1.update_symbols(shrunk_molecule2.symbols)
     shrunk_molecule1.update_coordinates(shrunk_molecule2.coordinates)

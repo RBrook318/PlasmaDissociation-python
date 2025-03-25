@@ -26,7 +26,7 @@ def process_results():
     # 5. Compile fragment data
     combine_fragments()
     # 6. Specifics
-    spc.specifics('../results/bondarr.txt')
+    spc.specifics('../../results/bondarr.txt')
     #  7. graphs
     write_graphs_json()
     grph.create_graphs()
@@ -46,7 +46,7 @@ def read_bondarr():
         A list of bond entries, each representing a bond event in the array.
     """
     bondarr = {}
-    with open('../results/bondarr.txt', 'r') as file:
+    with open('../../results/bondarr.txt', 'r') as file:
         for line in file:
             line = line.strip()
             if line:  # Skip empty lines
@@ -169,12 +169,12 @@ def compile_results():
     print(EXDIR)
     rep_number = EXDIR.split('/')[-1].split('-')[-1]
     if lines:  # Only proceed if lines is not empty
-        with open('../results/collated_diss.txt', 'a') as output_file:
+        with open('../../results/collated_diss.txt', 'a') as output_file:
             output_file.write(f'--- run-{rep_number} ---\n')
             output_file.write(''.join(lines))  # Join the lines into a single string
             output_file.write('----------------------------------------\n')
     else: 
-        with open('../results/collated_diss.txt', 'a') as output_file:
+        with open('../../results/collated_diss.txt', 'a') as output_file:
             output_file.write(f'--- run-{rep_number} ---\n')
             output_file.write('No dissociation found \n')  # Join the lines into a single string
             output_file.write('----------------------------------------\n')
@@ -188,17 +188,17 @@ def compile_results():
             bond_number = bond_info[1].strip()
             
             # Write to bond-type-specific output file
-            bond_type_file = os.path.join("../results/bonds/", f"{bond_type}.out")
+            bond_type_file = os.path.join("../..//results/bonds/", f"{bond_type}.out")
             with open(bond_type_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
                 
             # Write to bond-type-specific output file
-            bond_type_file = os.path.join("../results/bonds/", "allbonds.out")
+            bond_type_file = os.path.join("../../results/bonds/", "allbonds.out")
             with open(bond_type_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
 
             # Write to old output file format and order by timestep
-            bond_number_file = os.path.join("../results/bonds/", f"{bond_number}.out")
+            bond_number_file = os.path.join("../../results/bonds/", f"{bond_number}.out")
             with open(bond_number_file, "a") as f_out:
                 f_out.write(f"{timestep}\n")
 
@@ -326,10 +326,10 @@ def distance(point1, point2):
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2) ** 0.5
 
 def combine_fragments():
-    if os.path.exists("../results/fragments.out"):
-       combine_fragment_counts("output/fragments.out", "../results/fragments.out", "../results/fragments.out")
+    if os.path.exists("../../results/fragments.out"):
+       combine_fragment_counts("output/fragments.out", "../../results/fragments.out", "../../results/fragments.out")
     else:
-        shutil.copy2("output/fragments.out","../results")
+        shutil.copy2("output/fragments.out","../../results")
 
 def combine_fragment_counts(file1, file2, output_file):
     """
@@ -464,8 +464,8 @@ def write_fragment_counts(file_path, fragment_formulas):
         for formula, count in sorted_formulas:
             file.write(f"{formula}: {count}\n")
 
-import json
-from collections import defaultdict
+
+
 
 def write_graphs_json():
 
@@ -497,8 +497,7 @@ def write_graphs_json():
     """
     bond_counts = defaultdict(list)
 
-    # Reading bondarr.txt from ../results/bonds/
-    with open('../results/bondarr.txt', 'r') as file:
+    with open('../../results/bondarr.txt', 'r') as file:
         for line in file:
             bond, bond_type = line.strip().split(':')
             bond_counts[bond_type].append(bond)
@@ -526,11 +525,11 @@ def write_graphs_json():
         if symbol == "C":
             carbon_index = i + 1
             relevant_bonds = [
-                f"../results/bonds/{bond}.out" for bond_type, bonds in bond_counts.items()
+                f"../../results/bonds/{bond}.out" for bond_type, bonds in bond_counts.items()
                 for bond in bonds
                 if str(carbon_index) in bond.split('-')
             ]
-            combined_file = f"../results/bonds/carbon{carbon_index}.out"
+            combined_file = f"../../results/bonds/carbon{carbon_index}.out"
             with open(combined_file, 'w') as outfile:
                 for bond_file in relevant_bonds:
                     try:
@@ -543,11 +542,11 @@ def write_graphs_json():
 
     config = {
         "All": {
-            "output_file": "../results/graphs/All.png",
+            "output_file": "../../results/graphs/All.png",
             "files": []
         },
         "Carbons": {
-            "output_file": "../results/graphs/Carbons.png",
+            "output_file": "../../results/graphs/Carbons.png",
             "files": []
         }
     }
@@ -566,17 +565,17 @@ def write_graphs_json():
 
     # Generate the "All" graph
     for bond_type, bonds in bond_counts.items():
-        bond_filename = f"../results/bonds/{bond_type}.out"
+        bond_filename = f"../../results/bonds/{bond_type}.out"
         with open(bond_filename, 'w') as outfile:
             for bond in bonds:
-                bond_file = f"../results/bonds/{bond}.out"
+                bond_file = f"../../results/bonds/{bond}.out"
                 try:
                     with open(bond_file, 'r') as infile:
                         outfile.write(infile.read())
                 except FileNotFoundError:
                     print(f"Warning: {bond_file} not found.")
         config["All"]["files"].append({
-            "filename": f"../results//bonds/{bond_type}.out",
+            "filename": f"../../results//bonds/{bond_type}.out",
             "label": bond_type,
             "no_bonds": len(bonds),
             "color": color_map.get(bond_type, "gray")
@@ -594,7 +593,7 @@ def write_graphs_json():
     # Generate the bond-type-specific graphs
     for bond_type, bonds in bond_counts.items():
         config[bond_type] = {
-            "output_file": f"../results/graphs/{bond_type}.png",
+            "output_file": f"../../results/graphs/{bond_type}.png",
             "files": []
         }
 
@@ -608,24 +607,24 @@ def write_graphs_json():
 
         # Combine files and add to the config
         for carbon, bond_list in carbon_env_files.items():
-            combined_file = f"../results/bonds/{bond_type}_{carbon}.out"
+            combined_file = f"../../results/bonds/{bond_type}_{carbon}.out"
             with open(combined_file, 'w') as outfile:
                 for bond in bond_list:
-                    bond_file = f"../results/bonds/{bond}.out"
+                    bond_file = f"../../results/bonds/{bond}.out"
                     try:
                         with open(bond_file, 'r') as infile:
                             outfile.write(infile.read())
                     except FileNotFoundError:
                         print(f"Warning: {bond_file} not found.")
             config[bond_type]["files"].append({
-                "filename": f"../results/bonds/{bond_type}_{carbon}.out",
+                "filename": f"../../results/bonds/{bond_type}_{carbon}.out",
                 "label": f"{bond_type} ({carbon})",
                 "no_bonds": len(bond_list),
                 "color": carbon_colors[int(carbon) % len(carbon_colors)]
             })
 
     # Save the JSON configuration to a file
-    with open('../results/graphs_config.json', 'w') as json_file:
+    with open('../../results/graphs_config.json', 'w') as json_file:
         json.dump(config, json_file, indent=4)
 
 def track_completed_trajectory():
@@ -649,7 +648,7 @@ def track_completed_trajectory():
     - The function prints the updated count of completed trajectories for user feedback.
     """
     # Path to the tracking file
-    tracking_file = '../results/completed_trajectories.txt'
+    tracking_file = '../../results/completed_trajectories.txt'
     
     # Initialize count if file doesn't exist
     if not os.path.exists(tracking_file):

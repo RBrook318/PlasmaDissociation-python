@@ -98,11 +98,11 @@ if __name__=="__main__":
         os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1)+"/tmp")
         os.mkdir(EXDIR1+"/repetitions/rep-"+str(i+1)+"/checks")
         if(inputs["Molecule_data"]["Geom_flg"] == "Full"):
-            shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["Molecule_data"]["Geom_file_start"]),EXDIR1+"/rep-"+str(i+1)+"/Geometry")
+            shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/Geom/Geometry."+str(i+inputs["Molecule_data"]["Geom_file_start"]),EXDIR1+"/repetitions/rep-"+str(i+1)+"/Geometry")
     
     if HPCFLG==1:
             shutil.copytree("../code", EXDIR1+'/code')
-    if(inputs["Molecule_data"]["Geom_flg"] ==0):
+    if(inputs["Molecule_data"]["Geom_flg"] =="Full"):
         shutil.copy2("../"+inputs["Molecule_data"]["Molecule"]+"/bondarr.txt",EXDIR1+"/results")
     
     os.chdir(EXDIR1)
@@ -237,7 +237,7 @@ if __name__=="__main__":
             f.write('export QCPROG="$QC/exe/qcprog.exe"\n')
             f.write('export QCPROG_S="$QC/exe/qcprog.exe_s"\n')
             f.write('export PATH="$PATH:$QC/exe:$QC/bin"\n')
-            f.write("export QCSCRATCH="+EXDIR1+"/rep-$SLURM_ARRAY_TASK_ID \n")  
+            f.write("export QCSCRATCH="+EXDIR1+"/repetitions/rep-$SLURM_ARRAY_TASK_ID \n")  
         f.write("cd "+EXDIR1+"/repetitions/rep-$SLURM_ARRAY_TASK_ID \n")
         f.write("python /users/"+getpass.getuser()+"/PlasmaDissociation-python/code/main.py")
         f.close()

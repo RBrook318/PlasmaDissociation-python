@@ -65,7 +65,7 @@ def first_bond(bond_breaks):
 
     total_first_bonds = sum(len(timesteps) for timesteps in first_type.values())
 
-    with open('../results/specifics/firstbond.out', 'w') as file:
+    with open('../../results/specifics/firstbond.out', 'w') as file:
         file.write(f"Type of bond most often broken first: \n\n")
         for bond_type, timesteps in first_type.items():
             percentage = (len(timesteps) / total_first_bonds) * 100
@@ -90,7 +90,7 @@ def second_bond(bond_breaks):
 
     total_second_bonds = sum(len(timesteps) for timesteps in second_type.values())
 
-    with open('../results/specifics/secondbond.out', 'w') as file:
+    with open('../../results/specifics/secondbond.out', 'w') as file:
         file.write(f"Type of bond most often broken second: \n\n")
         for bond_type, timesteps in second_type.items():
             percentage = (len(timesteps) / total_second_bonds) * 100
@@ -123,7 +123,7 @@ def subsequent_bonds(bond_breaks, bond_types):
                     bond_timesteps[(seen_bond, bond)].append(timestep)
 
     # Writing results to a file
-    with open('../results/specifics/subsequent_bonds_any.out', 'w') as file:
+    with open('../../results/specifics/subsequent_bonds_any.out', 'w') as file:
         file.write(f"Subsequent bond type counts (any subsequent bond):\n")
         for (bond1_type, bond2_type), count in subsequent_type_counts.items():
             total_bond1 = sum(v for k, v in subsequent_type_counts.items() if k[0] == bond1_type)
@@ -166,7 +166,7 @@ def next_bond(bond_breaks, bond_types):
                 first_bond_count[bond1] += 1
 
     # Writing results to a file
-    with open('../results/specifics/next_bonds.out', 'w') as file:
+    with open('../../results/specifics/next_bonds.out', 'w') as file:
         file.write("Subsequent bond type counts:\n")
         for (bond1_type, bond2_type), count in subsequent_type_counts.items():
             total_bond1 = sum(v for k, v in subsequent_type_counts.items() if k[0] == bond1_type)
@@ -191,7 +191,7 @@ def next_bond(bond_breaks, bond_types):
 
 # Example usage
 def specifics(bond_types_file):
-    trajectory_data_file = '../results/collated_diss.txt'
+    trajectory_data_file = '../../results/collated_diss.txt'
     bond_types = read_bond_types(bond_types_file)
     bond_breaks = parse_trajectory_data(trajectory_data_file, bond_types)
     # print_bond_breaks(bond_breaks)
