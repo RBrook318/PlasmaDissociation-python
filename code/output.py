@@ -283,12 +283,12 @@ def forces_magnitudes(molecule):
     shrunk_index = np.where(np.array(molecule.dissociation_flags) == 'NO')[0]
 
     # Loop through non-dissociated atoms and calculate force magnitudes
-    for j in shrunk_index:
+    for j in range(len(shrunk_index)):
         # Calculate force magnitude (L2 norm)
         force_magnitude = np.sqrt(np.sum(molecule.forces[j, :3, :]**2))
 
         # Save the force magnitude to a file named after the atom index
-        with open(os.path.join(forces_dir, f"forcemagnitude_{j+1}.out"), "a") as out_file:
+        with open(os.path.join(forces_dir, f"forcemagnitude_{shrunk_index[j]+1}.out"), "a") as out_file:
             out_file.write(f"{force_magnitude}\n")
 
     # Plot force magnitudes after writing files
