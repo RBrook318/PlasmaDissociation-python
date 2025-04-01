@@ -84,7 +84,7 @@ def generate_graphs_from_json(json_file):
 
         # Set the graph labels and title
         plt.xlabel('Femtoseconds (fs)')
-        plt.ylabel('Average number of bonds broken per trajectory')
+        plt.ylabel('Dissociation yield (%)')
         plt.title(f"Bonds broken for {graph_name}")
         plt.legend()
 

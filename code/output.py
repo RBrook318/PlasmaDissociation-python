@@ -191,8 +191,8 @@ def output_time(molecule):
         times_file.write(f"Time of this step: {molecule.time[1]}\n")
         times_file.write(f"Time of QChem this step: {molecule.time[0]}\n")
         times_file.write(f"Time of python this step: {molecule.time[1]-molecule.time[0]}\n")
-        times_file.write(f"Total time of propagation: {molecule.time[3]}s (average: {molecule.time[3]/molecule.time[4]}s) \n")
-        times_file.write(f"Total time of QChem: {molecule.time[2]} (average: {molecule.time[2]/molecule.time[4]}s)\n")
+        times_file.write(f"Total time of propagation: {molecule.time[3]}s (average: {molecule.time[3]/molecule.timestep/gv.timestep}s) \n")
+        times_file.write(f"Total time of QChem: {molecule.time[2]} (average: {molecule.time[2]/(molecule.timestep/gv.timestep)}s)\n")
         times_file.write("-" * 40 + "\n")
 
 def output_fragment_time(timestep):

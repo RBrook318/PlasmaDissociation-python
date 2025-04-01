@@ -18,8 +18,10 @@ Functions:
 
 import numpy as np
 import json
+import os
 np.set_printoptions(precision=30)
 import global_vars as gv
+import elec
 
 class NumpyEncoder(json.JSONEncoder):
     """
@@ -229,7 +231,6 @@ class Molecule:
             data = json.load(json_file)
             return cls.from_dict(data)
 
-
 def create_empty_molecule(natoms):
     """
     Creates a molecule instance with default attributes.
@@ -321,7 +322,7 @@ def initialize_structure():
     masses = np.zeros(natoms, dtype=np.float64)  # Initialize masses array
     masses = setup_masses(symbols)
     coupling = np.zeros((natoms,3))
-    time = np.zeros((5))
+    time = np.zeros((4))
     # Create Molecule object with default amplitudes
     molecule = Molecule(symbols, geometry_data, momenta=momentum_data, scf_energy=scf_energy, forces=forces, multiplicity=multiplicity, amplitudes=amplitudes, masses=masses,coupling=coupling,time=time)
 
@@ -401,3 +402,294 @@ def setup_masses(symbols):
     masses_mau = masses * 1822.887
     
     return masses_mau
+
+def check_timestep_file(filename):
+    """Check if the simulation can be restarted based on the existing XYZ file."""
+    timesteps = []
+    if os.path.exists(filename):
+        with open(filename, "r") as xyz_file:
+            lines = xyz_file.readlines()
+        for line in reversed(lines):
+            if "Timestep:" in line:
+                line = line.split()
+                timesteps.append(int(line[1]))
+    return timesteps
+
+def check_timestep_file(filename):
+    """Check if the simulation can be restarted based on the existing XYZ file."""
+    timesteps = []
+    if os.path.exists(filename):
+        with open(filename, "r") as xyz_file:
+            lines = xyz_file.readlines()
+        for line in reversed(lines):
+            if "Timestep:" in line:
+                line = line.split()
+                timesteps.append(int(line[1]))
+    return timesteps
+
+def read_xyz_file(filename, target_timestep):
+    """Read XYZ file and return symbols and coordinates for the target timestep."""
+    symbols = []
+    coordinates = []
+    reading = False
+    if os.path.exists(filename):
+        with open(filename, "r") as xyz_file:
+            lines = xyz_file.readlines()
+        for line in lines:
+            if "Timestep:" in line:
+                current_timestep = int(line.split()[1])
+                if current_timestep == target_timestep:
+                    reading = True
+                else:
+                    reading = False
+            elif reading:
+                if line.strip() == "----------------------------------------":
+                    break
+                parts = line.split()
+                if len(parts) >= 5:
+                    symbols.append(parts[1])
+                    coordinates.append([float(parts[2]), float(parts[3]), float(parts[4])])
+    return symbols, np.array(coordinates)
+
+def read_momenta_file(filename, target_timestep):
+    """Read Momenta file and return momenta for the target timestep."""
+    momenta = []
+    reading = False
+    if os.path.exists(filename):
+        with open(filename, "r") as momenta_file:
+            lines = momenta_file.readlines()
+        for line in lines:
+            if "Timestep:" in line:
+                current_timestep = int(line.split()[1])
+                if current_timestep == target_timestep:
+                    reading = True
+                else:
+                    reading = False
+            elif reading:
+                if line.strip() == "----------------------------------------":
+                    break
+                parts = line.split()
+                if len(parts) == 3:
+                    momenta.append([float(parts[0]), float(parts[1]), float(parts[2])])
+    return np.array(momenta)
+
+import os
+import numpy as np
+
+def read_forces_file(filename, target_timestep):
+    """Read Forces file and return forces, amplitudes, multiplicity, SCF energy, and optional coupling forces for the target timestep."""
+
+    forces_dict = {}  # Store forces by atom and state
+    coupling_dict = {}  # Store coupling forces separately
+    amplitudes = None
+    multiplicity = None
+    scf_energy = None
+    dissociation_flags = None
+    reading = False
+    current_atom = None
+    current_state = None
+    num_states = 1  # Start at 1, assuming at least one state exists
+
+    if os.path.exists(filename):
+        with open(filename, "r") as forces_file:
+            lines = forces_file.readlines()
+
+        for line in lines:
+            line = line.strip()
+
+            # Detect timestep and check if we should start reading
+            if line.startswith("Timestep:"):
+                try:
+                    current_timestep = int(line.split()[1])
+                    reading = current_timestep == target_timestep
+                except (ValueError, IndexError):
+                    reading = False
+                if reading:
+                    forces_dict.clear()
+                    coupling_dict.clear()
+                    num_states = 1  # Reset for new timestep
+
+            elif reading:
+                if line == "----------------------------------------":
+                    break  # Stop reading at the end of the timestep block
+
+                # Parse amplitudes
+                elif line.startswith("Amplitudes:"):
+                    amplitude_str = line.replace("Amplitudes:", "").strip().strip("[]")
+                    amplitudes = np.array([complex(x) for x in amplitude_str.split()])
+
+                # Parse multiplicity
+                elif line.startswith("Multiplicity:"):
+                    try:
+                        multiplicity = int(line.split()[1])
+                    except (ValueError, IndexError):
+                        multiplicity = None
+
+                # Parse SCF energy
+                elif line.startswith("SCF Energy:"):
+                    energy_str = line.replace("SCF Energy:", "").strip().strip("[]")
+                    try:
+                        scf_energy = np.array([float(x) for x in energy_str.split()])
+                    except ValueError:
+                        scf_energy = None
+
+                # Parse dissociation flags
+                elif line.startswith("Dissociation Flags:"):
+                    flags_str = line.replace("Dissociation Flags:", "").strip().strip("[]")
+                    dissociation_flags = [flag.strip().strip("'") for flag in flags_str.split(",")]
+
+
+                # Parse forces per atom and state
+                elif line.startswith("Atom"):
+                    try:
+                        current_atom = int(line.split()[1].strip(":"))  # Extract atom number
+                        forces_dict[current_atom] = {}  # Initialize forces for the atom
+                    except (ValueError, IndexError):
+                        current_atom = None
+
+                elif line.startswith("State") and current_atom is not None:
+                    try:
+                        parts = line.split()
+                        current_state = int(parts[1].strip(":"))  # Extract state number
+                        num_states = max(num_states, current_state)  # Ensure we track max state index
+                        forces_dict[current_atom][current_state] = np.array(
+                            [float(parts[2]), float(parts[3]), float(parts[4])]
+                        )
+
+                    except (ValueError, IndexError):
+                        pass  # Skip if there is an issue parsing the line
+
+                # Parse coupling forces
+                elif line.startswith("Coupling:") and current_atom is not None:
+                    try:
+                        parts = line.split()
+                        coupling_dict[current_atom] = np.array(
+                            [float(parts[1]), float(parts[2]), float(parts[3])]
+                        )
+                    except (ValueError, IndexError):
+                        pass  # Skip if there is an issue parsing the coupling forces
+
+    # Convert forces into a structured NumPy array
+    if forces_dict:
+        natoms = max(forces_dict.keys())  # Total number of atoms
+        num_states = max(max(states.keys()) for states in forces_dict.values())  # Ensure num_states is correctly determined
+        num_states = max(num_states, 1)  # Ensure at least one state
+
+
+        forces = np.zeros((natoms, 3, num_states))  # Allocate (natoms, 3, num_states)
+
+
+
+        for atom, states in forces_dict.items():
+            for state, force in states.items():   
+                forces[atom - 1, :, state - 1] = force
+
+
+    else:
+        forces = None
+
+    # Convert coupling forces into a structured NumPy array
+    if coupling_dict:
+        natoms = max(coupling_dict.keys()) if forces_dict else 0
+        coupling_forces = np.zeros((natoms, 3))
+        for atom, coupling in coupling_dict.items():
+            coupling_forces[atom - 1, :] = coupling  # Adjust for zero-based indexing
+    else:
+        coupling_forces = None  # If no coupling terms are present
+
+    return forces, amplitudes, multiplicity, scf_energy, dissociation_flags, coupling_forces
+
+
+def read_times_file(filename, target_timestep):
+    """Read times from the time.all file for the target timestep."""
+    times = None
+    reading = False
+    if os.path.exists(filename):
+        with open(filename, "r") as times_file:
+            lines = times_file.readlines()
+        for line in lines:
+            if reading == False and "Timestep:" in line:
+                current_timestep = int(line.split()[1])
+                reading = current_timestep == target_timestep
+            elif reading:
+                if line.startswith("Time of this step:"):
+                    time_of_step = float(line.split(":")[1].strip().rstrip("s"))
+                elif line.startswith("Time of QChem this step:"):
+                    time_qchem = float(line.split(":")[1].strip().rstrip("s"))
+                elif line.startswith("Total time of propagation:"):
+                    total_time = float(line.split(":")[1].split()[0].strip().rstrip("s"))
+                elif line.startswith("Total time of QChem:"):
+                    total_time_QChem = float(line.split(":")[1].split()[0].strip().rstrip("s"))
+                                # Now break only if at least one time value was found
+                elif line.strip() == "----------------------------------------":
+                    if time_of_step is not None:
+                        break  
+        times = np.array([time_qchem, time_of_step, total_time_QChem, total_time])
+    return times
+
+def find_timestep():
+    """Check and return the congruent timestep from various files."""
+    try:
+        with open("output/molecule.json") as f:
+            molecule_json = json.load(f)
+        
+        xyz_timesteps = check_timestep_file('output/xyz.all')
+        momenta_timesteps = check_timestep_file('output/momenta.all')
+        forces_timesteps = check_timestep_file('output/forces.all')
+        json_timestep = molecule_json.get('Timestep', 0)
+        for timestep in xyz_timesteps:
+            if timestep in momenta_timesteps and timestep in forces_timesteps:
+                if timestep == json_timestep:
+                    start_step = timestep / gv.timestep
+                    molecule1 = Molecule.from_json('output/molecule.json')
+                    print('coordinates', molecule1.coordinates)
+                    num_atoms = len(molecule1.symbols)
+                    molecule2 = create_empty_molecule(num_atoms)
+                    print('Found congruent timestep: ', timestep, 'so start_step is:', start_step)
+                    return molecule1, molecule2, start_step
+                else:
+                    print('JSON file disagrees. Reading molecule from XYZ, Momenta, and Forces files.')
+                    symbols, coordinates = read_xyz_file('output/xyz.all', timestep)
+                    print("coordinates: ", coordinates)
+                    momenta = read_momenta_file('output/momenta.all', timestep)
+                    forces, amplitudes, multiplicity, scf_energy, dissociation_flags, coupling = read_forces_file('output/forces.all', timestep)
+                    time = read_times_file('output/time.all', timestep)
+                    masses = setup_masses(symbols)
+                    molecule1 = Molecule(symbols, coordinates, momenta, scf_energy, forces, amplitudes, timestep, multiplicity, dissociation_flags=dissociation_flags, time = time, coupling = coupling, masses = masses)
+                    num_atoms = len(molecule1.symbols)
+                    molecule2 = create_empty_molecule(num_atoms)
+                    start_step = timestep / gv.timestep
+                    return molecule1, molecule2, start_step 
+
+        print('No congruent timestep found. Setting start_step to 0.')
+        return 0
+
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return 0
+
+def initialize_simulation():
+    """Check if restart is possible and determine the start step."""
+    # Check if the result files exist
+    result_files_exist = all(os.path.exists(f'output/{file}') for file in ['dissociation.out', 'fragments.out'])
+
+    if result_files_exist:
+        print('Result files exist. Stopping the simulation.')
+        exit(0)
+
+    # Check if the necessary files exist for restart
+    files_exist = all(os.path.exists(f'output/{file}.all') for file in ['xyz', 'momenta', 'forces']) and os.path.exists('output/molecule.json')
+
+    if files_exist:
+        # Find the latest congruent timestep
+        molecule1, molecule2, start_step = find_timestep()
+    else:
+        # If files don't exist, set start_step to 0
+        start_step = 0
+        molecule1 = initialize_structure()
+        num_atoms = len(molecule1.symbols)
+        molecule2 = create_empty_molecule(num_atoms)
+        molecule1 = elec.run_elec_structure(molecule1, Guess=False)
+        
+
+    return molecule1, molecule2, start_step

@@ -57,85 +57,51 @@ Date: 30/10/2024
 
 import os
 import json
-import time
-from init import Molecule, initialize_structure, create_empty_molecule
+import time  
+from init import Molecule, initialize_structure, create_empty_molecule, initialize_simulation
 import elec
 import prop
 import output as out
 import result
 import global_vars as gv
 
-# Constants for file paths
-INPUTS_FILE = '../inputs.json'
-XYZ_FILE = 'output/xyz.all'
-MOLECULE_JSON_FILE = 'output/molecule.json'
-TIME_OUTPUT_FILE = 'output/time.out'
-
-
-def load_inputs():
-    """Load simulation parameters from a JSON file."""
-    with open(INPUTS_FILE) as f:
-        return json.load(f)
-
-def check_restart(endstep, increment):
-    """Check if the simulation can be restarted based on the existing XYZ file."""
-    if os.path.exists(XYZ_FILE):
-        with open(XYZ_FILE, "r") as xyz_file:
-            lines = xyz_file.readlines()
-        for line in reversed(lines):
-            if "Timestep:" in line:
-                break
-        line = line.split()
-        third_last_line = int(line[1]) / increment
-        print("Time step: ", third_last_line)
-        return 'YES' if third_last_line < endstep else 'NO'
-    return 'NO'
-
-def initialize_simulation(restart):
-    """Initialize the molecular structure and handle restart logic."""
+# def initialize_simulation(restart):
+#     """Initialize the molecular structure and handle restart logic."""
    
-    time1 =time.time()
-    if restart == 'NO':
-        molecule1 = initialize_structure()
-        num_atoms = len(molecule1.symbols)
-        molecule2 = create_empty_molecule(num_atoms)
-        molecule1 = elec.run_elec_structure(molecule1, Guess=False)
-        time2= time.time()
-        molecule1.time[1] = time2-time1
-        molecule1.time[3] += time2-time1
-        molecule1.time[4] = molecule1.timestep/gv.timestep
-        out.output_molecule(molecule1)
-        molecule1.time[0] = 0
-        return molecule1, molecule2, 1, True
-    # Restart logic
-    if os.path.exists(MOLECULE_JSON_FILE):
-        molecule1 = Molecule.from_json(MOLECULE_JSON_FILE)
-        num_atoms = len(molecule1.symbols)
-        molecule2 = create_empty_molecule(num_atoms)
-        startstep = molecule1.timestep / gv.timestep
-        return molecule1, molecule2, startstep, False
+#     time1 =time.time()
+#     if restart == 'NO':
+#         time2= time.time()
+#         molecule1.time[1] = time2-time1
+#         molecule1.time[3] += time2-time1
+#         molecule1.time[4] = molecule1.timestep/gv.timestep
+        
+#         molecule1.time[0] = 0
+#         return molecule1, molecule2, 1, True
     
-    # If JSON file doesn't exist, initialize a new structure
-    molecule1 = initialize_structure()
-    n = len(molecule1.symbols)
-    molecule2 = create_empty_molecule(n)
-    molecule1 = elec.run_elec_structure(molecule1, Guess=False)
-    time2= time.time()
-    molecule1.time[1] = time2-time1
-    molecule1.time[3] += time2-time1
-    molecule1.time[4] = molecule1.timestep/gv.timestep
-    out.output_molecule(molecule1)
-    molecule1.time[0] = 0
-    return molecule1, molecule2, 1, True
+#     # If JSON file doesn't exist, initialize a new structure
+#     molecule1 = initialize_structure()
+#     n = len(molecule1.symbols)
+#     molecule2 = create_empty_molecule(n)
+#     molecule1 = elec.run_elec_structure(molecule1, Guess=False)
+#     time2= time.time()
+#     molecule1.time[1] = time2-time1
+#     molecule1.time[3] += time2-time1
+#     molecule1.time[4] = molecule1.timestep/gv.timestep
+#     out.output_molecule(molecule1)
+#     molecule1.time[0] = 0
+#     return molecule1, molecule2, 1, True
 
-def run_simulation(startstep, molecule1, molecule2, guess):
+def run_simulation(startstep, molecule1, molecule2):
     """Run the main simulation loop for the specified number of timesteps."""
     n = len(molecule1.symbols)
+    guess = True
+
     for i in range(int(startstep)-1, gv.tot_timesteps + 1):
         time1 = time.time()
         old_coordinates = molecule1.coordinates.copy()
-
+        print(molecule1.coordinates)
         molecule2 = prop.prop_1(molecule1, molecule2)
+        
         molecule2 = elec.run_elec_structure(molecule2, Guess=guess)
 
         molecule1.time[0] = molecule2.time[0]
@@ -160,7 +126,6 @@ def run_simulation(startstep, molecule1, molecule2, guess):
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
-        molecule1.time[4] = molecule1.timestep/gv.timestep
         check2t = time.time()
         print("Check time = ", check2t-check1t)
         out.output_molecule(molecule1)
@@ -173,11 +138,13 @@ def main():
     gv.load_global_variables()
     # Check basic arguments
 
-    restart = check_restart(gv.tot_timesteps, gv.timestep)
+    # restart = init.check_restart(gv.tot_timesteps, gv.timestep)
 
-    molecule1, molecule2, startstep, guess = initialize_simulation(restart)
+    molecule1, molecule2, startstep = initialize_simulation()
 
-    run_simulation(startstep,molecule1, molecule2, guess)
+    out.output_molecule(molecule1)
+    
+    run_simulation(startstep,molecule1, molecule2)
 
     result.process_results()
 
