@@ -200,7 +200,7 @@ if __name__=="__main__":
                 f.write("#SBATCH --time=02:00:00\n")
                 f.write("#SBATCH --mem=1G\n")
                 f.write("#SBATCH --cpus-per-task=" + str(inputs["HPC"]["cores"]) + "\n")
-                if inputs["Molecule_data"]["method"] == "QChem":
+                if inputs["Elec_structure"]["method"] == "QChem":
                     f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
                     f.write("mkdir $TMPDIR/qchemlocal\n")
                     f.write("tar -xzvf /users/" + getpass.getuser() + "/qchem.tar.gz -C $TMPDIR/qchemlocal\n")
@@ -241,8 +241,13 @@ if __name__=="__main__":
         f.write("cd "+EXDIR1+"/repetitions/rep-$SLURM_ARRAY_TASK_ID \n")
         f.write("python /users/"+getpass.getuser()+"/PlasmaDissociation-python/code/main.py")
         f.close()
-        plasma_command = ['sbatch', '--dependency=afterok:' + setup_job_id, file1]
-        subprocess.call(plasma_command)
+        if inputs["Molecule_data"]["Geom_flg"] in ["PubChem", "Initial"]:
+            plasma_command = ['sbatch', '--dependency=afterok:' + setup_job_id, file1]
+            subprocess.call(plasma_command)
+        elif inputs["Molecule_data"]["Geom_flg"] in ["Full"]:
+            plasma_command = ['sbatch', file1]
+            subprocess.call(plasma_command)
+
     else: 
         for i in range(inputs["HPC"]["repeats"]):
             os.chdir(EXDIR1+"/rep-"+str(i+1))
