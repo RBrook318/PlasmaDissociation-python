@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: PlasmaDissociationNAMD - python
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Ryan
+    family-names: Brook
+    email: Ryan.brook8129@gmail.com
+    name-particle: Ryan
+    affiliation: University of Leeds
+    orcid: 'https://orcid.org/0009-0007-0433-6483'
+identifiers:
+  - type: url
+    value: >-
+      https://github.com/RBrook318/PlasmaDissociation-python.git
