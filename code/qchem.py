@@ -46,6 +46,7 @@ from pyqchem import get_output_from_qchem
 from pyqchem.parsers.parser_optimization import basic_optimization
 from pyqchem.parsers.parser_frequencies import basic_frequencies
 from pyqchem.parsers.basic import basic_parser_qchem
+from pyqchem import errors
 import subprocess
 import time
 import global_vars as gv
@@ -291,9 +292,10 @@ def run_qchem(molecule, Guess=True):
         store_full_output = True
         
     for state in range(1,gv.num_states+1):
-        qc_inp=create_qchemforces_input(molecule,Guess=Guess,excited_state=state)
+        qc_inp=create_qchemforces_input(molecule, scf_algorithm= "DIIS",Guess=Guess,excited_state=state)
         try:
             qtime1 = time.time()
+
             output, ee = get_output_from_qchem(qc_inp,processors=gv.cores,return_electronic_structure=True,store_full_output = store_full_output)
             molecule.elecinfo=(ee['coefficients'])
             qtime2= time.time()
@@ -304,8 +306,9 @@ def run_qchem(molecule, Guess=True):
             with open("f.all", "a") as f_all:
                 f_all.write(output)
         except:
-            # print('Using DIIS_GDM algorithm')
-            # Retry with a different setup
+
+            # # print('Using DIIS_GDM algorithm')
+            # # Retry with a different setup
             
             qc_inp=create_qchemforces_input(molecule, scf_algorithm="DIIS_GDM", Guess=False,excited_state=state)
             try:
@@ -320,10 +323,10 @@ def run_qchem(molecule, Guess=True):
                 molecule.time[2] += qtime2-qtime1
                 with open("f.all", "a") as f_all:
                     f_all.write(output)
-            except:
-                with open("ERROR", "w") as file:
+            except errors.OutputError as e:
+                with open("ERROR", "w") as file:    
                     file.write("Error occurred during QChem job. Help.\n" + os.getcwd())
-                    file.write(output)
+                    file.write(e.full_output)
                 exit()
         # Job completed successfully
         readqchemforces(output, molecule,state)
@@ -442,7 +445,8 @@ def readqchemnac(filename, molecule):
     - Extracts the SF-CIS derivative coupling data from the QChem output.
     - Ensures the extracted data is correctly reshaped to (natoms, 3).
     """
-    natoms = len(molecule.symbols)  # Number of atoms
+
+    natoms = sum(flag.lower() != 'yes' for flag in molecule.dissociation_flags)
     coupling_data = []
     found_coupling = False
 

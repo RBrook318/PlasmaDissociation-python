@@ -76,7 +76,7 @@ def run_checks(molecule, old_coordinates):
     # Timing displacement_vector
     displacement_vector(molecule, old_coordinates)
     
-    end_time = time.time()
+   
 
 def output_xyz(molecule):
     """

@@ -1,4 +1,5 @@
 import json
+import os 
 
 # Initialize global variables
 cores = None
@@ -20,7 +21,8 @@ def load_global_variables():
     global cores,num_states, multiplicity, start_state
     global method, spin_flip, basis, gpu
     global branches, timestep, tot_timesteps, checks, remove_atoms
-
+    dir = os.getcwd()
+    print(dir)
     # Open and read the JSON file
     with open("../../inputs.json", "r") as f:
         inputs = json.load(f)

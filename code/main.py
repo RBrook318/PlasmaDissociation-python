@@ -99,7 +99,7 @@ def run_simulation(startstep, molecule1, molecule2):
     for i in range(int(startstep)-1, gv.tot_timesteps + 1):
         time1 = time.time()
         old_coordinates = molecule1.coordinates.copy()
-        print(molecule1.coordinates)
+
         molecule2 = prop.prop_1(molecule1, molecule2)
         
         molecule2 = elec.run_elec_structure(molecule2, Guess=guess)
@@ -108,26 +108,21 @@ def run_simulation(startstep, molecule1, molecule2):
         molecule1.time[2] = molecule2.time[2]
 
         molecule1.elecinfo = molecule2.elecinfo
-        prop1t = time.time()
+
         molecule1 = prop.prop_2(molecule1, molecule2)
-        prop2t = time.time()
-        print("Prop2 time = ", prop2t-prop1t)
-        remove1t = time.time()
+
         if gv.remove_atoms == 1:
             molecule1, dissociated = prop.fragments(molecule1)
             molecule1 = prop.prop_diss(molecule1)
             guess = dissociated == 0  # Update guess based on dissociation
-        remove2t = time.time()
-        print("Remove time = ", remove2t - remove1t)
-        
-        check1t = time.time()
+
         if gv.checks > 0:
             out.run_checks(molecule1,old_coordinates)
         time2= time.time()
         molecule1.time[1] = time2-time1
         molecule1.time[3] += time2-time1
-        check2t = time.time()
-        print("Check time = ", check2t-check1t)
+
+
         out.output_molecule(molecule1)
 
         molecule1.time[0] = 0
@@ -137,8 +132,6 @@ def main():
 
     gv.load_global_variables()
     # Check basic arguments
-
-    # restart = init.check_restart(gv.tot_timesteps, gv.timestep)
 
     molecule1, molecule2, startstep = initialize_simulation()
 
@@ -150,5 +143,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

@@ -473,9 +473,6 @@ def read_momenta_file(filename, target_timestep):
                     momenta.append([float(parts[0]), float(parts[1]), float(parts[2])])
     return np.array(momenta)
 
-import os
-import numpy as np
-
 def read_forces_file(filename, target_timestep):
     """Read Forces file and return forces, amplitudes, multiplicity, SCF energy, and optional coupling forces for the target timestep."""
 
@@ -578,12 +575,9 @@ def read_forces_file(filename, target_timestep):
 
         forces = np.zeros((natoms, 3, num_states))  # Allocate (natoms, 3, num_states)
 
-
-
         for atom, states in forces_dict.items():
             for state, force in states.items():   
                 forces[atom - 1, :, state - 1] = force
-
 
     else:
         forces = None
@@ -642,15 +636,13 @@ def find_timestep():
                 if timestep == json_timestep:
                     start_step = timestep / gv.timestep
                     molecule1 = Molecule.from_json('output/molecule.json')
-                    print('coordinates', molecule1.coordinates)
                     num_atoms = len(molecule1.symbols)
                     molecule2 = create_empty_molecule(num_atoms)
-                    print('Found congruent timestep: ', timestep, 'so start_step is:', start_step)
+
                     return molecule1, molecule2, start_step
                 else:
                     print('JSON file disagrees. Reading molecule from XYZ, Momenta, and Forces files.')
                     symbols, coordinates = read_xyz_file('output/xyz.all', timestep)
-                    print("coordinates: ", coordinates)
                     momenta = read_momenta_file('output/momenta.all', timestep)
                     forces, amplitudes, multiplicity, scf_energy, dissociation_flags, coupling = read_forces_file('output/forces.all', timestep)
                     time = read_times_file('output/time.all', timestep)
@@ -659,6 +651,7 @@ def find_timestep():
                     num_atoms = len(molecule1.symbols)
                     molecule2 = create_empty_molecule(num_atoms)
                     start_step = timestep / gv.timestep
+
                     return molecule1, molecule2, start_step 
 
         print('No congruent timestep found. Setting start_step to 0.')

@@ -113,7 +113,7 @@ if __name__=="__main__":
             file2="Setup_"+inputs["HPC"]["Runfolder"]+".sh"
             f=open(file2,"w")
             f.write("#$ -cwd -V \n")
-            f.write("#$ -l h_vmem=1G,h_rt=02:00:00 \n")
+            f.write("#$ -l h_vmem=4G,h_rt=02:00:00 \n")
             f.write("#$ -N Setup_"+inputs["HPC"]["Runfolder"]+" \n")
             f.write("#$ -pe smp "+str(inputs["HPC"]["cores"])+" \n") #Use shared memory parallel environemnt 
             if(inputs["Elec_structure"]["method"]=="QChem"):
@@ -198,7 +198,7 @@ if __name__=="__main__":
                 f.write("#!/bin/bash\n")
                 f.write("#SBATCH --job-name=Setup_" + inputs["HPC"]["Runfolder"] + "\n")
                 f.write("#SBATCH --time=02:00:00\n")
-                f.write("#SBATCH --mem=1G\n")
+                f.write("#SBATCH --mem=8G\n")
                 f.write("#SBATCH --cpus-per-task=" + str(inputs["HPC"]["cores"]) + "\n")
                 if inputs["Elec_structure"]["method"] == "QChem":
                     f.write("export LM_LICENSE_FILE=27000@uol-lnx-lic01.leeds.ac.uk\n")
