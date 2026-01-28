@@ -249,12 +249,6 @@ def create_qchemforces_input(molecule, scf_algorithm="DIIS", Guess=True, excited
                 extra_rem_keywords={'input_bohr':'true','spin_flip':'true','set_iter':500}
             )
 
-    # Add SCF guess if requested
-    # if Guess:
-    #     qc_inp.update_input({
-    #         'scf_guess': coefficients
-    #     })
-
     return qc_inp 
             
 def run_qchem(molecule, Guess=True): 
@@ -360,6 +354,9 @@ def run_qchem(molecule, Guess=True):
         with open("ec.out", "r") as ec_file, open("ec.all", "a") as ec_all:
             ec_all.write(ec_file.read())
             ec_all.write("---------------------------------------------------\n")
+
+    if os.path.exists("calculation_data.db"):
+        os.remove("calculation_data.db")
 
 
     return molecule
@@ -479,7 +476,7 @@ def readqchemnac(filename, molecule):
 
     return coupling_array
 
-def initial_conditions(symbols,coords,cores):
+def initial_conditions(symbols,coords,cores,basis):
     """
     Generates initial conditions for a molecule by optimizing its geometry 
     and calculating vibrational modes using QChem.
@@ -508,10 +505,11 @@ def initial_conditions(symbols,coords,cores):
     - Utilizes basic_optimization and basic_frequencies parsers to interpret QChem output.
     """
     molecule = Structure(coordinates=coords, symbols=symbols, multiplicity=1)
+    print(basis)
     qc_inp = QchemInput(molecule,
                         jobtype='opt',
                         exchange='BHHLYP !50% HF +  50% Becke88 exchange',
-                        basis='6-31+G*',
+                        basis=basis,
                         unrestricted=True,
                         max_scf_cycles=500,
                         sym_ignore=True,
@@ -533,7 +531,7 @@ def initial_conditions(symbols,coords,cores):
     qc_inp = QchemInput(opt_coords,
                         jobtype='FREQ',
                         exchange='BHHLYP',
-                        basis='6-31+G*',
+                        basis=basis,
                         extra_rem_keywords={'input_bohr':'true'}
                         )
     output = get_output_from_qchem(qc_inp,cores)
