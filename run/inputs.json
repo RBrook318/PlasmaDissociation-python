@@ -1,18 +1,18 @@
 {
     "HPC":{
-        "Runfolder":"PPVE-isomer-state2",
-        "repeats":100,
+        "Runfolder":"Methane-tests",
+        "repeats":1,
         "cores":8,
         "initre":0,
         "hours": 48
     },
 
     "Molecule_data":{
-        "Geom_flg": "Initial",
-        "Molecule":"PPVE-isomer",
-        "States":2,
+        "Geom_flg": "PubChem",
+        "Molecule":"Methane",
+        "States":1,
         "Multiplicity":3,
-        "Start_State": 2,
+        "Start_State": 1,
         "Temp":5000,
         "Cutoff": 100,
         "Geom_file_start":1
@@ -20,7 +20,7 @@
 
     "Elec_structure":{
         "method": "QChem",
-        "Spin_flip":1,
+        "Spin_flip":0,
         "Basis":"6-31+G*",
         "GPU": 0
     },
